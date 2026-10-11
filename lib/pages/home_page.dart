@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/app_bottom_bar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -204,12 +205,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // bottom navigation custom
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: 24,
-              child: _bottomBar(),
+             const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: AppBottomBar(currentIndex: 0),
             ),
           ],
         ),
