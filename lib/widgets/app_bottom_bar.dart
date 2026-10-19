@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../pages/home_page.dart';
 import '../pages/barang_page.dart';
-import '../pages/riwayat_pesan_page.dart';
 import '../pages/riwayat_laporan_page.dart';
+import '../pages/riwayat_pesan_page.dart';
+import '../pages/profil_page.dart';
+import '../pages/notifikasi_page.dart';
+import 'upload_dialog.dart';
 
-/// Bottom bar yang dipakai bersama oleh semua halaman utama.
+/// Bottom bar bersama (sudah termasuk tombol lonceng notifikasi di atasnya).
 /// index: 0 Cari, 1 Barang, 2 Riwayat Laporan, 3 Pesan, 4 Profil
 class AppBottomBar extends StatelessWidget {
   final int currentIndex;
@@ -29,7 +32,9 @@ class AppBottomBar extends StatelessWidget {
       case 3:
         page = const RiwayatPesanPage();
         break;
-      // TODO: case 4 -> halaman Profil
+      case 4:
+        page = const ProfilPage();
+        break;
     }
     if (page == null) return;
     Navigator.pushReplacement(
@@ -47,48 +52,100 @@ class AppBottomBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Container(
-              height: 52,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(26),
-                border: Border.all(color: _navy.withOpacity(0.5)),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  _item(context, 0, Icons.search, 'CARI'),
-                  _item(context, 1, Icons.receipt_long_outlined, 'BARANG'),
-                  _item(context, 2, Icons.assignment_outlined, 'RIWAYAT\nLAPORAN'),
-                  _item(context, 3, Icons.chat_bubble_outline, 'PESAN'),
-                  _item(context, 4, Icons.person_outline, 'PROFIL'),
-                ],
-              ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: _lonceng(context),
             ),
           ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: () {
-              // TODO: buka halaman "Laporkan barang"
-            },
-            child: Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: _navy,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2)),
-                ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 52,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(26),
+                    border: Border.all(color: _navy.withOpacity(0.5)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _item(context, 0, Icons.search, 'CARI'),
+                      _item(context, 1, Icons.receipt_long_outlined, 'BARANG'),
+                      _item(context, 2, Icons.assignment_outlined,
+                          'RIWAYAT\nLAPORAN'),
+                      _item(context, 3, Icons.chat_bubble_outline, 'PESAN'),
+                      _item(context, 4, Icons.person_outline, 'PROFIL'),
+                    ],
+                  ),
+                ),
               ),
-              child: const Icon(Icons.add, color: Colors.white, size: 28),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: () => showUploadDialog(context),
+                child: Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: _navy,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black.withOpacity(0.25),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2)),
+                    ],
+                  ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 28),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _lonceng(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const NotifikasiPage()),
+      ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: _navy.withOpacity(0.4)),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withOpacity(0.15),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2)),
+              ],
+            ),
+            child: const Icon(Icons.notifications_none, color: _navy),
+          ),
+          Positioned(
+            right: -2,
+            top: -2,
+            child: Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                  color: Colors.red, shape: BoxShape.circle),
             ),
           ),
         ],

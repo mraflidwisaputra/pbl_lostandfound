@@ -169,42 +169,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // tombol notifikasi
-            Positioned(
-              right: 16,
-              bottom: 100,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withOpacity(0.2),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2)),
-                      ],
-                    ),
-                    child: const Icon(Icons.notifications_none, color: _navy),
-                  ),
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                          color: Colors.red, shape: BoxShape.circle),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
              const Positioned(
               left: 0,
               right: 0,

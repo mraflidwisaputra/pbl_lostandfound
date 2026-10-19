@@ -93,36 +93,6 @@ class RiwayatPesanPage extends StatelessWidget {
               ],
             ),
 
-            // tombol notifikasi
-            Positioned(
-              right: 18,
-              bottom: 92,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: _navy.withOpacity(0.5)),
-                    ),
-                    child: const Icon(Icons.notifications_none, color: _navy),
-                  ),
-                  Positioned(
-                    right: -2,
-                    top: -2,
-                    child: Container(
-                      width: 10,
-                      height: 10,
-                      decoration: const BoxDecoration(
-                          color: Colors.red, shape: BoxShape.circle),
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ],
         ),
       ),
