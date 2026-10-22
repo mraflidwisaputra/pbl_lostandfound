@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'BarangHilang_admin.dart'; // <-- Pastikan file ini diimport
 
 void main() {
   runApp(const MyApp());
@@ -17,20 +18,20 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFEFF6FD),
         useMaterial3: true,
       ),
-      home: const DashboardPage(),
+      home: const DashboardAdminPage(),
     );
   }
 }
 
-class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
+class DashboardAdminPage extends StatefulWidget {
+  const DashboardAdminPage({super.key});
 
   @override
-  State<DashboardPage> createState() => _DashboardPageState();
+  State<DashboardAdminPage> createState() => _DashboardAdminPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> {
-  int _selectedIndex = 0;
+class _DashboardAdminPageState extends State<DashboardAdminPage> {
+  int _selectedIndex = 0; // 0 adalah DASHBOARD
 
   static const Color _navy = Color(0xFF0B4F7C);
   static const Color _bg = Color(0xFFEFF6FD);
@@ -52,7 +53,6 @@ class _DashboardPageState extends State<DashboardPage> {
       backgroundColor: _bg,
       body: Stack(
         children: [
-          // Konten utama
           SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -69,8 +69,6 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
           ),
-
-          // Tombol Notifikasi Bell (floating di atas bottom nav)
           Positioned(
             right: 20,
             bottom: 110,
@@ -95,13 +93,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   clipBehavior: Clip.none,
                   children: [
                     const Center(
-                      child: Icon(
-                        Icons.notifications_none,
-                        color: _navy,
-                        size: 22,
-                      ),
+                      child: Icon(Icons.notifications_none, color: _navy, size: 22),
                     ),
-                    // Badge merah dengan border putih
                     Positioned(
                       right: -2,
                       top: -2,
@@ -111,10 +104,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         decoration: BoxDecoration(
                           color: const Color(0xFFE74C3C),
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Colors.white,
-                            width: 2,
-                          ),
+                          border: Border.all(color: Colors.white, width: 2),
                         ),
                       ),
                     ),
@@ -123,8 +113,6 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
           ),
-
-          // Bottom Navigation + Tombol Plus (sejajar horizontal)
           Positioned(
             left: 0,
             right: 0,
@@ -136,7 +124,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ==================== HEADER (DIMODIFIKASI: EMOJI DIGANTI ICON) ====================
   Widget _buildHeader() {
     return Row(
       children: [
@@ -176,7 +163,6 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
               const SizedBox(height: 2),
-              // PERUBAHAN DI SINI: Mengganti Text dengan Row berisi Text + Icon
               Row(
                 children: [
                   const Text(
@@ -187,9 +173,9 @@ class _DashboardPageState extends State<DashboardPage> {
                       color: Color(0xFF2C4F7C),
                     ),
                   ),
-                  const SizedBox(width: 8), // Jarak antara teks dan icon
+                  const SizedBox(width: 8),
                   const Icon(
-                    Icons.waving_hand, // Icon tangan melambaikan (pengganti emoji)
+                    Icons.waving_hand,
                     color: Color(0xFF2C4F7C),
                     size: 24,
                   ),
@@ -202,7 +188,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ==================== STATS GRID ====================
   Widget _buildStatsGrid() {
     return GridView.count(
       crossAxisCount: 2,
@@ -279,7 +264,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ==================== AKTIVITAS SECTION ====================
   Widget _buildAktivitasSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,14 +356,12 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ==================== BOTTOM SECTION (Nav Bar + Tombol Plus) ====================
   Widget _buildBottomSection() {
     return Container(
       padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Bottom Navigation Bar
           Expanded(
             child: Container(
               height: 62,
@@ -404,10 +386,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
             ),
           ),
-
           const SizedBox(width: 12),
-
-          // Tombol Plus (+) di sebelah kanan, sejajar dengan bottom nav
           GestureDetector(
             onTap: () {
               debugPrint('Tombol Tambah ditekan');
@@ -426,11 +405,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.add,
-                color: Colors.white,
-                size: 28,
-              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 28),
             ),
           ),
         ],
@@ -438,13 +413,26 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  // ==================== NAV ITEM ====================
   Widget _buildNavItem(int index) {
     final isSelected = _selectedIndex == index;
     final IconData icon = _getNavIcon(index, isSelected);
 
     return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = index),
+      onTap: () {
+        setState(() => _selectedIndex = index);
+
+        // Jika BARANG (index 1) diklik dari Dashboard, kembali ke BarangHilangPage
+        if (index == 1) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation1, animation2) => const BarangHilangPage(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        }
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         decoration: BoxDecoration(
@@ -455,11 +443,7 @@ class _DashboardPageState extends State<DashboardPage> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 20,
-              color: _navy,
-            ),
+            Icon(icon, size: 20, color: _navy),
             const SizedBox(height: 2),
             Text(
               _navLabels[index],

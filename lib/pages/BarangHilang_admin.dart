@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dashboard_admin.dart'; // <-- Pastikan file ini diimport
 
 void main() {
   runApp(const MyApp());
@@ -30,7 +31,7 @@ class BarangHilangPage extends StatefulWidget {
 }
 
 class _BarangHilangPageState extends State<BarangHilangPage> {
-  int _selectedIndex = 1;
+  int _selectedIndex = 1; // 1 adalah BARANG
   bool _isHilang = true;
   final TextEditingController _searchController = TextEditingController();
 
@@ -144,7 +145,6 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
               ),
             ),
           ),
-
           Positioned(
             right: 20,
             bottom: 110,
@@ -189,7 +189,6 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
               ),
             ),
           ),
-
           Positioned(
             left: 0,
             right: 0,
@@ -201,7 +200,6 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
     );
   }
 
-  // ==================== POPUP DETAIL BARANG ====================
   void _showBarangDetail(Map<String, String> barang) {
     showDialog(
       context: context,
@@ -219,7 +217,6 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Gambar Barang dengan tombol close
                 Stack(
                   children: [
                     ClipRRect(
@@ -242,7 +239,6 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
                         },
                       ),
                     ),
-                    // Tombol Close (X)
                     Positioned(
                       top: 12,
                       right: 12,
@@ -255,24 +251,17 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
                             color: Colors.black.withOpacity(0.5),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 20,
-                          ),
+                          child: const Icon(Icons.close, color: Colors.white, size: 20),
                         ),
                       ),
                     ),
                   ],
                 ),
-
-                // Konten Detail
                 Container(
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Nama Barang
                       Text(
                         barang['nama']!,
                         style: GoogleFonts.spaceMono(
@@ -282,76 +271,45 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-
-                      // Lokasi
                       Row(
                         children: [
                           const Icon(Icons.location_on, color: _navy, size: 18),
                           const SizedBox(width: 6),
                           Text(
                             barang['lokasi']!,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: _mediumNavy,
-                            ),
+                            style: GoogleFonts.inter(fontSize: 13, color: _mediumNavy),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
-
-                      // Deskripsi
                       Text(
                         barang['deskripsi'] ?? 'Deskripsi Atau Detail Barang',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: _mediumNavy,
-                        ),
+                        style: GoogleFonts.inter(fontSize: 13, color: _mediumNavy),
                       ),
                       const SizedBox(height: 20),
-
-                      // Card Pelapor
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: _navy.withOpacity(0.3)),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
                         ),
                         child: Row(
                           children: [
-                            CircleAvatar(
+                            const CircleAvatar(
                               radius: 20,
                               backgroundColor: _selectedBg,
-                              backgroundImage: NetworkImage(
-                                'https://randomuser.me/api/portraits/women/65.jpg',
-                              ),
+                              backgroundImage: NetworkImage('https://randomuser.me/api/portraits/women/65.jpg'),
                             ),
                             const SizedBox(width: 12),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Reporting Oleh',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
+                                Text('Diposting Oleh', style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade600)),
                                 const SizedBox(height: 2),
                                 Text(
                                   barang['pelapor']!,
-                                  style: GoogleFonts.spaceMono(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: _darkNavy,
-                                  ),
+                                  style: GoogleFonts.spaceMono(fontSize: 14, fontWeight: FontWeight.w700, color: _darkNavy),
                                 ),
                               ],
                             ),
@@ -359,30 +317,19 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-
-                      // Tombol Kirim Pesan
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            // TODO: Navigasi ke halaman chat
-                          },
+                          onPressed: () => Navigator.pop(context),
                           icon: const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20),
                           label: Text(
                             'KIRIM PESAN',
-                            style: GoogleFonts.spaceMono(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
+                            style: GoogleFonts.spaceMono(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _navy,
                             padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                             elevation: 0,
                           ),
                         ),
@@ -398,7 +345,6 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
     );
   }
 
-  // ==================== TABS ====================
   Widget _buildTabs() {
     return Container(
       height: 48,
@@ -456,7 +402,6 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
     );
   }
 
-  // ==================== SEARCH BAR ====================
   Widget _buildSearchBar() {
     return Container(
       height: 48,
@@ -468,7 +413,7 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
       ),
       child: Row(
         children: [
-          Icon(Icons.search, color: _navy, size: 20),
+          const Icon(Icons.search, color: _navy, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
@@ -485,7 +430,6 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
     );
   }
 
-  // ==================== BARANG CARD ====================
   Widget _buildBarangCard(Map<String, String> barang) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -527,11 +471,7 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
               children: [
                 Text(
                   barang['nama']!,
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: _darkNavy,
-                  ),
+                  style: GoogleFonts.spaceMono(fontSize: 14, fontWeight: FontWeight.w700, color: _darkNavy),
                 ),
                 const SizedBox(height: 8),
                 _buildInfoRow(Icons.access_time, barang['waktu']!),
@@ -565,7 +505,6 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
     );
   }
 
-  // ==================== BOTTOM SECTION ====================
   Widget _buildBottomSection() {
     return Container(
       padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
@@ -628,7 +567,21 @@ class _BarangHilangPageState extends State<BarangHilangPage> {
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = _selectedIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = index),
+      onTap: () {
+        setState(() => _selectedIndex = index);
+
+        // Jika DASHBOARD (index 0) diklik, pindah ke DashboardAdminPage
+        if (index == 0) {
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation1, animation2) => const DashboardAdminPage(),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
+          );
+        }
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         decoration: BoxDecoration(
