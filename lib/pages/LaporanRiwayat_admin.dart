@@ -1,5 +1,11 @@
+import 'dart:ui'; // untuk efek blur (ImageFilter)
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+// Import halaman-halaman lain yang terhubung di folder pages
+import 'dashboard_admin.dart';
+import 'riwayat_pesan_page.dart';
+import 'profil_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -35,6 +41,7 @@ class _LaporanPageState extends State<LaporanPage> {
   final TextEditingController _searchController = TextEditingController();
 
   final List<String> _tabLabels = ['MENUNGGU', 'DISETUJUI', 'DITOLAK', 'SELESAI'];
+  final List<String> _navLabels = ['DASHBOARD', 'BARANG', 'LAPORAN', 'PESAN', 'PROFIL'];
 
   // Data contoh laporan
   final List<Map<String, String>> _laporanList = [
@@ -73,36 +80,205 @@ class _LaporanPageState extends State<LaporanPage> {
     super.dispose();
   }
 
+  // ==================== NAVIGASI BOTTOM BAR ====================
+  void _onItemTapped(int index) {
+    if (index == _selectedIndex) return;
+
+    // Abaikan navigasi untuk BARANG (1) karena file halamannya telah dihapus
+    if (index == 1) {
+      debugPrint('Halaman ${_navLabels[index]} saat ini tidak tersedia.');
+      return;
+    }
+
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    Widget targetPage;
+    switch (index) {
+      case 0:
+        targetPage = const DashboardAdminPage();
+        break;
+      case 2:
+        return; // Sudah di halaman Laporan
+      case 3:
+        targetPage = const RiwayatPesanPage();
+        break;
+      case 4:
+        targetPage = const ProfilPage();
+        break;
+      default:
+        return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => targetPage,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
+  }
+
+  // ==================== POPUP UPLOAD BARANG TEMUAN ====================
+  void _showUploadDialog() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Tutup',
+      barrierColor: Colors.black.withOpacity(0.15),
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        // BackdropFilter = background di belakang popup menjadi blur
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: _buildUploadDialog(dialogContext),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.9, end: 1.0).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUploadDialog(BuildContext dialogContext) {
+    return Container(
+      width: 300,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      decoration: BoxDecoration(
+        color: _navy,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Judul + tombol X
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Upload Barang Temuan',
+                style: GoogleFonts.spaceMono(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.pop(dialogContext),
+                child: Text(
+                  'X',
+                  style: GoogleFonts.spaceMono(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+
+          // Dua pilihan: kamera & galeri
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildUploadOption(
+                icon: Icons.camera_alt_outlined,
+                onTap: () {
+                  Navigator.pop(dialogContext);
+                  debugPrint('Buka kamera');
+                  // TODO: ImagePicker().pickImage(source: ImageSource.camera)
+                },
+              ),
+              _buildUploadOption(
+                icon: Icons.image_outlined,
+                onTap: () {
+                  Navigator.pop(dialogContext);
+                  debugPrint('Buka galeri');
+                  // TODO: ImagePicker().pickImage(source: ImageSource.gallery)
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          Text(
+            'Pilih Salah Satu',
+            style: GoogleFonts.spaceMono(
+              fontSize: 12,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUploadOption({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        height: 68,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F9FF),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Icon(icon, size: 32, color: _navy),
+      ),
+    );
+  }
+
+  // ==================== BUILD ====================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
+      bottomNavigationBar: _buildBottomSection(),
       body: Stack(
         children: [
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16)
+                  .copyWith(bottom: 100),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header dengan Logo
                   _buildHeader(),
                   const SizedBox(height: 24),
-
-                  // Tab Filter
                   _buildTabFilter(),
                   const SizedBox(height: 20),
-
-                  // Search Bar
                   _buildSearchBar(),
                   const SizedBox(height: 28),
-
-                  // List Laporan
                   ..._laporanList.map((laporan) => Padding(
                         padding: const EdgeInsets.only(bottom: 16),
                         child: _buildLaporanCard(laporan),
                       )),
-                  const SizedBox(height: 120),
                 ],
               ),
             ),
@@ -111,9 +287,11 @@ class _LaporanPageState extends State<LaporanPage> {
           // Tombol Notifikasi
           Positioned(
             right: 20,
-            bottom: 110,
+            bottom: 100,
             child: GestureDetector(
-              onTap: () {},
+              onTap: () {
+                debugPrint('Notifikasi diklik');
+              },
               child: Container(
                 width: 44,
                 height: 44,
@@ -152,14 +330,6 @@ class _LaporanPageState extends State<LaporanPage> {
                 ),
               ),
             ),
-          ),
-
-          // Bottom Navigation
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildBottomSection(),
           ),
         ],
       ),
@@ -257,7 +427,7 @@ class _LaporanPageState extends State<LaporanPage> {
       ),
       child: Row(
         children: [
-          Icon(Icons.search, color: _navy, size: 20),
+          const Icon(Icons.search, color: _navy, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
@@ -296,7 +466,6 @@ class _LaporanPageState extends State<LaporanPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Gambar Barang
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: Image.network(
@@ -315,7 +484,6 @@ class _LaporanPageState extends State<LaporanPage> {
             ),
           ),
           const SizedBox(width: 16),
-          // Informasi Barang
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,60 +532,65 @@ class _LaporanPageState extends State<LaporanPage> {
 
   // ==================== BOTTOM SECTION ====================
   Widget _buildBottomSection() {
-    return Container(
-      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Container(
-              height: 62,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: _navy.withOpacity(0.4)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _buildNavItem(0, Icons.dashboard_outlined, 'DASHBOARD'),
-                  _buildNavItem(1, Icons.copy_outlined, 'BARANG'),
-                  _buildNavItem(2, Icons.description_outlined, 'LAPORAN'),
-                  _buildNavItem(3, Icons.chat_bubble_outline, 'PESAN'),
-                  _buildNavItem(4, Icons.person_outline, 'PROFIL'),
-                ],
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Container(
+                height: 62,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: _navy.withOpacity(0.4)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildNavItem(0, Icons.dashboard_outlined, 'DASHBOARD'),
+                    _buildNavItem(1, Icons.copy_outlined, 'BARANG'),
+                    _buildNavItem(2, Icons.description_outlined, 'LAPORAN'),
+                    _buildNavItem(3, Icons.chat_bubble_outline, 'PESAN'),
+                    _buildNavItem(4, Icons.person_outline, 'PROFIL'),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          GestureDetector(
-            onTap: () {},
-            child: Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: _navy,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: _navy.withOpacity(0.35),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+            const SizedBox(width: 12),
+
+            // Tombol Tambah (+) -> memunculkan popup upload
+            GestureDetector(
+              onTap: _showUploadDialog,
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _navy,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: _navy.withOpacity(0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.add, color: Colors.white, size: 28),
               ),
-              child: const Icon(Icons.add, color: Colors.white, size: 28),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -425,7 +598,7 @@ class _LaporanPageState extends State<LaporanPage> {
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isSelected = _selectedIndex == index;
     return GestureDetector(
-      onTap: () => setState(() => _selectedIndex = index),
+      onTap: () => _onItemTapped(index),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         decoration: BoxDecoration(

@@ -1,6 +1,9 @@
+import 'dart:ui'; // untuk efek blur (ImageFilter)
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'BarangHilang_admin.dart'; // <-- Pastikan file ini diimport
+
+import 'LaporanRiwayat_admin.dart';
+// Import 'BarangHilang_admin.dart' telah dihapus
 
 void main() {
   runApp(const MyApp());
@@ -47,15 +50,188 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
     'PROFIL',
   ];
 
+  // Fungsi terpusat untuk menangani perpindahan halaman
+  void _onItemTapped(int index) {
+    if (index == _selectedIndex) return;
+
+    // Abaikan navigasi untuk BARANG (1), PESAN (3), dan PROFIL (4)
+    // karena file halamannya telah dihapus atau tidak tersedia
+    if (index == 1 || index == 3 || index == 4) {
+      debugPrint('Halaman ${_navLabels[index]} saat ini tidak tersedia.');
+      return;
+    }
+
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    Widget targetPage;
+    switch (index) {
+      case 0:
+        return; // Sudah berada di Dashboard
+      case 2:
+        targetPage = const LaporanPage();
+        break;
+      default:
+        return;
+    }
+
+    // Navigasi tanpa animasi agar terasa seperti pergantian tab yang instan
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => targetPage,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
+  }
+
+  // ==================== POPUP UPLOAD BARANG TEMUAN ====================
+  void _showUploadDialog() {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Tutup',
+      barrierColor: Colors.black.withOpacity(0.15),
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        // BackdropFilter = background di belakang popup menjadi blur
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: _buildUploadDialog(dialogContext),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.9, end: 1.0).animate(
+              CurvedAnimation(parent: animation, curve: Curves.easeOut),
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUploadDialog(BuildContext dialogContext) {
+    return Container(
+      width: 300,
+      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+      decoration: BoxDecoration(
+        color: _navy,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Judul + tombol X
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Upload Barang Temuan',
+                style: GoogleFonts.spaceMono(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.pop(dialogContext),
+                child: Text(
+                  'X',
+                  style: GoogleFonts.spaceMono(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+
+          // Dua pilihan: kamera & galeri
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildUploadOption(
+                icon: Icons.camera_alt_outlined,
+                onTap: () {
+                  Navigator.pop(dialogContext);
+                  debugPrint('Buka kamera');
+                  // TODO: ImagePicker().pickImage(source: ImageSource.camera)
+                },
+              ),
+              _buildUploadOption(
+                icon: Icons.image_outlined,
+                onTap: () {
+                  Navigator.pop(dialogContext);
+                  debugPrint('Buka galeri');
+                  // TODO: ImagePicker().pickImage(source: ImageSource.gallery)
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          Text(
+            'Pilih Salah Satu',
+            style: GoogleFonts.spaceMono(
+              fontSize: 12,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUploadOption({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        height: 68,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF5F9FF),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.25),
+              blurRadius: 6,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Icon(icon, size: 32, color: _navy),
+      ),
+    );
+  }
+
+  // ==================== BUILD ====================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
+      bottomNavigationBar: _buildBottomSection(),
       body: Stack(
         children: [
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16)
+                  .copyWith(bottom: 100),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -64,16 +240,19 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
                   _buildStatsGrid(),
                   const SizedBox(height: 28),
                   _buildAktivitasSection(),
-                  const SizedBox(height: 120),
                 ],
               ),
             ),
           ),
+
+          // Tombol Notifikasi Mengambang
           Positioned(
             right: 20,
-            bottom: 110,
+            bottom: 100,
             child: GestureDetector(
-              onTap: () {},
+              onTap: () {
+                debugPrint('Notifikasi diklik');
+              },
               child: Container(
                 width: 44,
                 height: 44,
@@ -113,17 +292,12 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
               ),
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildBottomSection(),
-          ),
         ],
       ),
     );
   }
 
+  // ==================== HEADER ====================
   Widget _buildHeader() {
     return Row(
       children: [
@@ -143,7 +317,7 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: _navy.withOpacity(0.6)),
                 ),
-                child: const Icon(Icons.search, color: _navy, size: 28),
+                child: const Icon(Icons.admin_panel_settings, color: _navy, size: 28),
               );
             },
           ),
@@ -188,6 +362,7 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
     );
   }
 
+  // ==================== STATS GRID ====================
   Widget _buildStatsGrid() {
     return GridView.count(
       crossAxisCount: 2,
@@ -264,6 +439,7 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
     );
   }
 
+  // ==================== AKTIVITAS SECTION ====================
   Widget _buildAktivitasSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -356,83 +532,74 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
     );
   }
 
+  // ==================== BOTTOM SECTION ====================
   Widget _buildBottomSection() {
-    return Container(
-      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Container(
-              height: 62,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: _navy.withOpacity(0.4)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: List.generate(_navLabels.length, (index) {
-                  return _buildNavItem(index);
-                }),
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Container(
+                height: 62,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: _navy.withOpacity(0.4)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(_navLabels.length, (index) {
+                    return _buildNavItem(index);
+                  }),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          GestureDetector(
-            onTap: () {
-              debugPrint('Tombol Tambah ditekan');
-            },
-            child: Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: _navy,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: _navy.withOpacity(0.35),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+            const SizedBox(width: 12),
+
+            // Tombol Tambah (+) -> memunculkan popup upload
+            GestureDetector(
+              onTap: _showUploadDialog,
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: _navy,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: _navy.withOpacity(0.35),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.add, color: Colors.white, size: 28),
               ),
-              child: const Icon(Icons.add, color: Colors.white, size: 28),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
+  // ==================== NAV ITEM ====================
   Widget _buildNavItem(int index) {
     final isSelected = _selectedIndex == index;
     final IconData icon = _getNavIcon(index, isSelected);
 
     return GestureDetector(
-      onTap: () {
-        setState(() => _selectedIndex = index);
-
-        // Jika BARANG (index 1) diklik dari Dashboard, kembali ke BarangHilangPage
-        if (index == 1) {
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (context, animation1, animation2) => const BarangHilangPage(),
-              transitionDuration: Duration.zero,
-              reverseTransitionDuration: Duration.zero,
-            ),
-          );
-        }
-      },
+      onTap: () => _onItemTapped(index),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         decoration: BoxDecoration(
