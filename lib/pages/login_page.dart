@@ -1,6 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_page.dart';
+import 'dashboard_admin.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,6 +20,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passC = TextEditingController();
   bool _isAdmin = false; // false = Civitas Akademik, true = Admin
   bool _obscure = true;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -26,12 +30,64 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _login() {
-    // TODO: ganti dengan autentikasi sungguhan (API / Firebase)
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
+  Future<void> _login() async {
+    if (_emailC.text.trim().isEmpty || _passC.text.trim().isEmpty) {
+      setState(() => _errorMessage = 'Email dan password tidak boleh kosong');
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailC.text.trim(),
+        password: _passC.text.trim(),
+      );
+      if (!mounted) return;
+      if (_isAdmin) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const DashboardAdminPage()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomeScreen()),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException: ' + e.code + ' - ' + (e.message ?? ''));
+      String msg;
+      switch (e.code) {
+        case 'user-not-found':
+          msg = 'Akun tidak ditemukan di Firebase';
+          break;
+        case 'wrong-password':
+          msg = 'Password salah';
+          break;
+        case 'invalid-credential':
+          msg = 'Email atau password salah';
+          break;
+        case 'invalid-email':
+          msg = 'Format email tidak valid';
+          break;
+        case 'user-disabled':
+          msg = 'Akun telah dinonaktifkan';
+          break;
+        case 'network-request-failed':
+          msg = 'Koneksi internet bermasalah';
+          break;
+        default:
+          msg = 'Login gagal: ' + (e.message ?? e.code);
+      }
+      setState(() => _errorMessage = msg);
+    } catch (e) {
+      debugPrint('Login general error: ' + e.toString());
+      setState(() => _errorMessage = 'Gagal login: ' + e.toString());
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -155,13 +211,36 @@ class _LoginScreenState extends State<LoginScreen> {
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 14),
+
+                    // Tampilkan pesan error jika ada
+                    if (_errorMessage != null) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            color: Colors.red.shade700,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ] else
+                      const SizedBox(height: 6),
 
                     SizedBox(
-                      width: 80,
-                      height: 34,
+                      width: 100,
+                      height: 36,
                       child: ElevatedButton(
-                        onPressed: _login,
+                        onPressed: _isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _navy,
                           foregroundColor: Colors.white,
@@ -170,9 +249,22 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                         ),
-                        child: Text('Login',
-                            style: GoogleFonts.poppins(
-                                fontSize: 13, fontWeight: FontWeight.w600)),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                'Login',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
                     ),
                   ],

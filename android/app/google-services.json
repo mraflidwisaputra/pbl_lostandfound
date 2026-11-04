@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "406637526887",
+    "project_id": "pbl-lost-and-found",
+    "storage_bucket": "pbl-lost-and-found.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:406637526887:android:4ec8390e389592f41e39c2",
+        "android_client_info": {
+          "package_name": "com.example.aplikasi_lostandfound"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfte-eANTdm3epsxGskx6qjRUOOucH3EE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

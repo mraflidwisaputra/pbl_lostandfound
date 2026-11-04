@@ -1,8 +1,12 @@
-import 'dart:ui'; // untuk efek blur (ImageFilter)
+﻿import 'dart:ui'; // untuk efek blur (ImageFilter)
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'notifikasi_admin.dart'; // halaman notifikasi
+import 'notifikasi_admin.dart';
+import 'dashboard_admin.dart';
+import 'BarangHilang_admin.dart';
+import 'LaporanRiwayat_admin.dart';
+import 'Profil_admin.dart';
 
 void main() {
   runApp(const MyApp());
@@ -20,7 +24,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFEFF6FD),
         useMaterial3: true,
       ),
-      home: const RiwayatPesanPage(),
+      home: const RiwayatPesanAdminPage(),
     );
   }
 }
@@ -28,14 +32,14 @@ class MyApp extends StatelessWidget {
 // =====================================================================
 //  HALAMAN DAFTAR PESAN (tampilan admin)
 // =====================================================================
-class RiwayatPesanPage extends StatefulWidget {
-  const RiwayatPesanPage({super.key});
+class RiwayatPesanAdminPage extends StatefulWidget {
+  const RiwayatPesanAdminPage({super.key});
 
   @override
-  State<RiwayatPesanPage> createState() => _RiwayatPesanPageState();
+  State<RiwayatPesanAdminPage> createState() => _RiwayatPesanAdminPageState();
 }
 
-class _RiwayatPesanPageState extends State<RiwayatPesanPage> {
+class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
   int _selectedIndex = 3; // 3 adalah PESAN
 
   static const Color _navy = Color(0xFF0B4F7C);
@@ -66,20 +70,46 @@ class _RiwayatPesanPageState extends State<RiwayatPesanPage> {
     },
     {
       'nama': 'Sadie',
-      'pesan': 'Baik Bapak👍',
+      'pesan': 'Baik BapakðŸ‘',
       'waktu': 'Sekarang',
       'avatar': 'https://randomuser.me/api/portraits/women/65.jpg',
     },
   ];
 
-  // ==================== BOTTOM BAR (FRONT END SAJA) ====================
-  // Belum terhubung ke halaman lain, hanya mengganti tab aktif secara visual
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
     setState(() {
       _selectedIndex = index;
     });
-    debugPrint('Menu ${_navLabels[index]} ditekan (belum terhubung)');
+
+    Widget targetPage;
+    switch (index) {
+      case 0:
+        targetPage = const DashboardAdminPage();
+        break;
+      case 1:
+        targetPage = const BarangHilangAdminPage();
+        break;
+      case 2:
+        targetPage = const LaporanPage();
+        break;
+      case 3:
+        return;
+      case 4:
+        targetPage = const ProfilAdminPage();
+        break;
+      default:
+        return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => targetPage,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
   }
 
   // ==================== POPUP UPLOAD BARANG TEMUAN ====================

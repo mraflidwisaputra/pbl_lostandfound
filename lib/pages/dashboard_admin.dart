@@ -1,9 +1,12 @@
-import 'dart:ui'; // untuk efek blur (ImageFilter)
+﻿import 'dart:ui'; // untuk efek blur (ImageFilter)
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'LaporanRiwayat_admin.dart';
-// Import 'BarangHilang_admin.dart' telah dihapus
+import 'BarangHilang_admin.dart';
+import 'ChatPage_admin.dart';
+import 'Profil_admin.dart';
+import 'notifikasi_admin.dart';
 
 void main() {
   runApp(const MyApp());
@@ -54,13 +57,6 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
   void _onItemTapped(int index) {
     if (index == _selectedIndex) return;
 
-    // Abaikan navigasi untuk BARANG (1), PESAN (3), dan PROFIL (4)
-    // karena file halamannya telah dihapus atau tidak tersedia
-    if (index == 1 || index == 3 || index == 4) {
-      debugPrint('Halaman ${_navLabels[index]} saat ini tidak tersedia.');
-      return;
-    }
-
     setState(() {
       _selectedIndex = index;
     });
@@ -69,8 +65,17 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
     switch (index) {
       case 0:
         return; // Sudah berada di Dashboard
+      case 1:
+        targetPage = const BarangHilangAdminPage();
+        break;
       case 2:
         targetPage = const LaporanPage();
+        break;
+      case 3:
+        targetPage = const RiwayatPesanAdminPage();
+        break;
+      case 4:
+        targetPage = const ProfilAdminPage();
         break;
       default:
         return;
@@ -251,7 +256,10 @@ class _DashboardAdminPageState extends State<DashboardAdminPage> {
             bottom: 100,
             child: GestureDetector(
               onTap: () {
-                debugPrint('Notifikasi diklik');
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotifikasiPage()),
+                );
               },
               child: Container(
                 width: 44,

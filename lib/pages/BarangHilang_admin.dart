@@ -1,6 +1,12 @@
-import 'dart:ui'; // untuk efek blur (ImageFilter)
+﻿import 'dart:ui'; // untuk efek blur (ImageFilter)
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'dashboard_admin.dart';
+import 'LaporanRiwayat_admin.dart';
+import 'ChatPage_admin.dart';
+import 'Profil_admin.dart';
+import 'notifikasi_admin.dart';
 
 void main() {
   runApp(const MyApp());
@@ -18,20 +24,20 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFEFF6FD),
         useMaterial3: true,
       ),
-      home: const LaporanRiwayatPage(),
+      home: const BarangHilangAdminPage(),
     );
   }
 }
 
-class LaporanRiwayatPage extends StatefulWidget {
-  const LaporanRiwayatPage({super.key});
+class BarangHilangAdminPage extends StatefulWidget {
+  const BarangHilangAdminPage({super.key});
 
   @override
-  State<LaporanRiwayatPage> createState() => _LaporanRiwayatPageState();
+  State<BarangHilangAdminPage> createState() => _BarangHilangAdminPageState();
 }
 
-class _LaporanRiwayatPageState extends State<LaporanRiwayatPage> {
-  int _selectedIndex = 2; // 2 adalah LAPORAN
+class _BarangHilangAdminPageState extends State<BarangHilangAdminPage> {
+  int _selectedIndex = 1; // 1 adalah BARANG
   String _selectedTab = 'MENUNGGU';
 
   static const Color _navy = Color(0xFF0B4F7C);
@@ -220,7 +226,7 @@ class _LaporanRiwayatPageState extends State<LaporanRiwayatPage> {
             right: 20,
             bottom: 100,
             child: GestureDetector(
-              onTap: () => debugPrint('Notifikasi diklik'),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotifikasiPage())),
               child: Container(
                 width: 44,
                 height: 44,
@@ -536,20 +542,49 @@ class _LaporanRiwayatPageState extends State<LaporanRiwayatPage> {
     );
   }
 
+  void _onItemTapped(int index) {
+    if (index == _selectedIndex) return;
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    Widget targetPage;
+    switch (index) {
+      case 0:
+        targetPage = const DashboardAdminPage();
+        break;
+      case 1:
+        return;
+      case 2:
+        targetPage = const LaporanPage();
+        break;
+      case 3:
+        targetPage = const RiwayatPesanAdminPage();
+        break;
+      case 4:
+        targetPage = const ProfilAdminPage();
+        break;
+      default:
+        return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => targetPage,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+      ),
+    );
+  }
+
   // ==================== NAV ITEM ====================
   Widget _buildNavItem(int index) {
     final isSelected = _selectedIndex == index;
     final IconData icon = _getNavIcon(index, isSelected);
 
     return GestureDetector(
-      onTap: () {
-        if (index != _selectedIndex) {
-          setState(() {
-            _selectedIndex = index;
-          });
-          debugPrint('Navigasi ke: ${_navLabels[index]}');
-        }
-      },
+      onTap: () => _onItemTapped(index),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         decoration: BoxDecoration(
