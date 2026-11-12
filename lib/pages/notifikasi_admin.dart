@@ -103,7 +103,7 @@ class NotifikasiPage extends StatelessWidget {
           const SizedBox(width: 12),
           Text(
             'Notifikasi',
-            style: GoogleFonts.spaceMono(
+            style: GoogleFonts.poppins(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: _darkNavy,
@@ -159,7 +159,7 @@ class NotifikasiPage extends StatelessWidget {
               children: [
                 Text(
                   judul,
-                  style: GoogleFonts.spaceMono(
+                  style: GoogleFonts.poppins(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
                     color: _darkNavy,

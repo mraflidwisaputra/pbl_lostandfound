@@ -1,12 +1,15 @@
 ﻿import 'dart:ui'; // untuk efek blur (ImageFilter)
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 
 import 'notifikasi_admin.dart';
 import 'dashboard_admin.dart';
 import 'BarangHilang_admin.dart';
 import 'LaporanRiwayat_admin.dart';
 import 'Profil_admin.dart';
+import 'kelolapengguna_admin.dart';
 
 void main() {
   runApp(const MyApp());
@@ -42,6 +45,9 @@ class RiwayatPesanAdminPage extends StatefulWidget {
 class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
   int _selectedIndex = 3; // 3 adalah PESAN
 
+  // 1. TAMBAHKAN GLOBAL KEY UNTUK MENDAPATKAN POSISI TOMBOL PLUS
+  final GlobalKey _fabKey = GlobalKey();
+
   static const Color _navy = Color(0xFF0B4F7C);
   static const Color _bg = Color(0xFFEFF6FD);
   static const Color _selectedBg = Color(0xFFC9D3F5);
@@ -54,7 +60,6 @@ class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
     'PROFIL',
   ];
 
-  // Data contoh -> ganti dengan data dari server / Firebase
   final List<Map<String, String>> _chatList = [
     {
       'nama': 'Loki',
@@ -70,7 +75,7 @@ class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
     },
     {
       'nama': 'Sadie',
-      'pesan': 'Baik BapakðŸ‘',
+      'pesan': 'Baik Bapak👍',
       'waktu': 'Sekarang',
       'avatar': 'https://randomuser.me/api/portraits/women/65.jpg',
     },
@@ -112,204 +117,384 @@ class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
     );
   }
 
-  // ==================== POPUP UPLOAD BARANG TEMUAN ====================
-  void _showUploadDialog() {
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Tutup',
-      barrierColor: Colors.black.withOpacity(0.15),
-      transitionDuration: const Duration(milliseconds: 200),
-      pageBuilder: (dialogContext, animation, secondaryAnimation) {
-        return BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
-          child: Center(
-            child: Material(
-              color: Colors.transparent,
-              child: _buildUploadDialog(dialogContext),
-            ),
-          ),
-        );
-      },
-      transitionBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: animation,
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.9, end: 1.0).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOut),
-            ),
-            child: child,
-          ),
-        );
-      },
-    );
-  }
+  // 2. FUNGSI POPUP DENGAN OVERLAY (MUNCUL DI ATAS TOMBOL)
+  void _showQuickActionDialog() {
+    final RenderBox renderBox =
+        _fabKey.currentContext!.findRenderObject() as RenderBox;
+    final position = renderBox.localToGlobal(Offset.zero);
+    final size = renderBox.size;
 
-  Widget _buildUploadDialog(BuildContext dialogContext) {
-    return Container(
-      width: 300,
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
-      decoration: BoxDecoration(
-        color: _navy,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+    const double popupWidth = 260.0;
+    const double popupHeight = 150.0;
+
+    final double leftPosition =
+        position.dx + (size.width / 2) - (popupWidth / 2);
+    final double topPosition =
+        position.dy - popupHeight - 16; // 16px di atas tombol
+
+    final OverlayState overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => Stack(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Upload Barang Temuan',
-                style: GoogleFonts.spaceMono(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                ),
+          // Background transparan untuk mendeteksi tap di luar popup (untuk menutup)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => overlayEntry.remove(),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                child: Container(color: Colors.black.withOpacity(0.1)),
               ),
-              GestureDetector(
-                onTap: () => Navigator.pop(dialogContext),
-                child: Text(
-                  'X',
-                  style: GoogleFonts.spaceMono(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 32),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildUploadOption(
-                icon: Icons.camera_alt_outlined,
-                onTap: () {
-                  Navigator.pop(dialogContext);
-                  debugPrint('Buka kamera');
-                  // TODO: ImagePicker().pickImage(source: ImageSource.camera)
-                },
-              ),
-              _buildUploadOption(
-                icon: Icons.image_outlined,
-                onTap: () {
-                  Navigator.pop(dialogContext);
-                  debugPrint('Buka galeri');
-                  // TODO: ImagePicker().pickImage(source: ImageSource.gallery)
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Pilih Salah Satu',
-            style: GoogleFonts.spaceMono(fontSize: 12, color: Colors.white),
+          // Popup itu sendiri
+          Positioned(
+            left: leftPosition.clamp(
+              0.0,
+              MediaQuery.of(context).size.width - popupWidth,
+            ),
+            top: topPosition.clamp(0.0, MediaQuery.of(context).size.height),
+            width: popupWidth,
+            child: _buildQuickActionPopup(() => overlayEntry.remove()),
           ),
         ],
       ),
     );
+
+    overlay.insert(overlayEntry);
   }
 
-  Widget _buildUploadOption({
+  // 3. UI POPUP AKSI CEPAT
+  Widget _buildQuickActionPopup(VoidCallback onClose) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _navy,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Aksi Cepat',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: onClose,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'X',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildQuickActionButton(
+              icon: Icons.add_business_outlined,
+              title: 'Tambah Barang Temuan',
+              onTap: () {
+                onClose();
+                _showUploadBarangTemuanDialog();
+              },
+            ),
+            const SizedBox(height: 10),
+            _buildQuickActionButton(
+              icon: Icons.people_outline,
+              title: 'Kelola Pengguna',
+              onTap: () {
+                onClose();
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const KelolaPenggunaPage()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ===== POPUP UPLOAD BARANG TEMUAN (KAMERA / GALERI) =====
+  Future<void> _pickBarangImage(ImageSource source) async {
+    try {
+      final XFile? picked = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+      debugPrint('Foto barang temuan dipilih: ${picked.path}');
+      // TODO: lanjutkan ke form upload barang temuan dengan picked.path
+    } catch (e) {
+      debugPrint('Gagal memilih gambar: $e');
+    }
+  }
+
+  void _showUploadBarangTemuanDialog() {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.1),
+      builder: (dialogContext) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              decoration: BoxDecoration(
+                color: _navy,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.25),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Upload Barang Temuan',
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.of(dialogContext).pop(),
+                        child: Text(
+                          'X',
+                          style: GoogleFonts.poppins(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Tombol Kamera & Galeri
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildUploadOptionButton(
+                        icon: Icons.camera_alt_outlined,
+                        onTap: () {
+                          Navigator.of(dialogContext).pop();
+                          _pickBarangImage(ImageSource.camera);
+                        },
+                      ),
+                      const SizedBox(width: 16),
+                      _buildUploadOptionButton(
+                        icon: Icons.image_outlined,
+                        onTap: () {
+                          Navigator.of(dialogContext).pop();
+                          _pickBarangImage(ImageSource.gallery);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  Text(
+                    'Pilih Salah Satu',
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w400,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUploadOptionButton({
     required IconData icon,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 100,
-        height: 68,
+        width: 72,
+        height: 52,
         decoration: BoxDecoration(
-          color: const Color(0xFFF5F9FF),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              blurRadius: 6,
-              offset: const Offset(0, 3),
-            ),
-          ],
         ),
-        child: Icon(icon, size: 32, color: _navy),
+        child: Icon(icon, color: _navy, size: 26),
       ),
     );
   }
 
-  // ==================== BUILD ====================
+  Widget _buildQuickActionButton({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: _selectedBg,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: _navy, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: _navy,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
       bottomNavigationBar: _buildBottomSection(),
+      // Lonceng notifikasi: otomatis berada tepat di atas bar menu & tombol plus
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(right: 4),
+        child: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotifikasiPage()),
+            );
+          },
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: _navy.withOpacity(0.4)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Center(
+                  child: Icon(
+                    Icons.notifications_none,
+                    color: _navy,
+                    size: 22,
+                  ),
+                ),
+                Positioned(
+                  right: -2,
+                  top: -2,
+                  child: Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE74C3C),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
       body: Stack(
         children: [
           SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16)
-                  .copyWith(bottom: 100),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 20,
+                vertical: 16,
+              ).copyWith(bottom: 100),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeader(),
                   const SizedBox(height: 70),
-                  ..._chatList.map((chat) => Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: _buildChatItem(chat),
-                      )),
+                  ..._chatList.map(
+                    (chat) => Padding(
+                      padding: const EdgeInsets.only(bottom: 14),
+                      child: _buildChatItem(chat),
+                    ),
+                  ),
                 ],
-              ),
-            ),
-          ),
-
-          // Tombol Notifikasi -> buka halaman notifikasi_admin.dart
-          Positioned(
-            right: 20,
-            bottom: 20,
-            child: GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const NotifikasiPage()),
-                );
-              },
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: _navy.withOpacity(0.4)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Center(
-                      child: Icon(Icons.notifications_none, color: _navy, size: 22),
-                    ),
-                    Positioned(
-                      right: -2,
-                      top: -2,
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE74C3C),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
           ),
@@ -318,7 +503,6 @@ class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
     );
   }
 
-  // ==================== HEADER (LOGO) ====================
   Widget _buildHeader() {
     return Row(
       children: [
@@ -347,7 +531,6 @@ class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
     );
   }
 
-  // ==================== ITEM DAFTAR CHAT ====================
   Widget _buildChatItem(Map<String, String> chat) {
     return GestureDetector(
       onTap: () {
@@ -394,7 +577,7 @@ class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
                     children: [
                       Text(
                         chat['nama']!,
-                        style: GoogleFonts.spaceMono(
+                        style: GoogleFonts.poppins(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
@@ -415,10 +598,7 @@ class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
                     chat['pesan']!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 11,
-                      color: Colors.white,
-                    ),
+                    style: GoogleFonts.inter(fontSize: 11, color: Colors.white),
                   ),
                 ],
               ),
@@ -429,7 +609,6 @@ class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
     );
   }
 
-  // ==================== BOTTOM SECTION ====================
   Widget _buildBottomSection() {
     return SafeArea(
       top: false,
@@ -463,8 +642,12 @@ class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
               ),
             ),
             const SizedBox(width: 12),
+
+            // 4. PASANG GLOBAL KEY DI TOMBOL PLUS
             GestureDetector(
-              onTap: _showUploadDialog,
+              key: _fabKey, // <--- INI KUNCINYA AGAR POSISI DIKETAHUI
+              onTap:
+                  _showQuickActionDialog, // <--- GANTI DENGAN FUNGSI POPUP BARU
               child: Container(
                 width: 52,
                 height: 52,
@@ -506,7 +689,7 @@ class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
             const SizedBox(height: 2),
             Text(
               _navLabels[index],
-              style: GoogleFonts.spaceMono(
+              style: GoogleFonts.poppins(
                 fontSize: 7.5,
                 fontWeight: FontWeight.w700,
                 color: _navy,
@@ -538,7 +721,7 @@ class _RiwayatPesanAdminPageState extends State<RiwayatPesanAdminPage> {
 }
 
 // =====================================================================
-//  HALAMAN CHAT (tampilan admin)
+//  HALAMAN CHAT (tampilan admin) - TIDAK DIUBAH
 // =====================================================================
 class _Pesan {
   final String teks;
@@ -571,7 +754,6 @@ class _ChatAdminPageState extends State<ChatAdminPage> {
   final TextEditingController _inputC = TextEditingController();
   final ScrollController _scrollC = ScrollController();
 
-  // Data contoh -> ganti dengan data dari server / Firebase
   final List<_Pesan> _pesan = [
     _Pesan('Selamat siang, ada yang bisa kami bantu?', true),
     _Pesan('Saya kehilangan dompet hitam di gedung utama', false),
@@ -625,7 +807,6 @@ class _ChatAdminPageState extends State<ChatAdminPage> {
     );
   }
 
-  // ==================== HEADER CHAT ====================
   Widget _buildHeader() {
     return Container(
       color: Colors.white,
@@ -648,7 +829,7 @@ class _ChatAdminPageState extends State<ChatAdminPage> {
               children: [
                 Text(
                   widget.namaLawan,
-                  style: GoogleFonts.spaceMono(
+                  style: GoogleFonts.poppins(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: _darkNavy,
@@ -673,8 +854,6 @@ class _ChatAdminPageState extends State<ChatAdminPage> {
     );
   }
 
-  // ==================== BUBBLE PESAN ====================
-  // Admin = kanan (navy), pengguna = kiri (putih)
   Widget _buildBubble(_Pesan p) {
     final admin = p.dariAdmin;
     return Align(
@@ -706,7 +885,6 @@ class _ChatAdminPageState extends State<ChatAdminPage> {
     );
   }
 
-  // ==================== INPUT PESAN ====================
   Widget _buildInputBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
@@ -753,7 +931,11 @@ class _ChatAdminPageState extends State<ChatAdminPage> {
                   color: _navy,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                child: const Icon(
+                  Icons.send_rounded,
+                  size: 16,
+                  color: Colors.white,
+                ),
               ),
             ),
           ],
