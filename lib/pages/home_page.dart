@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../models/item_barang.dart';
+import '../services/auth_service.dart';
+import '../services/barang_service.dart';
 import '../widgets/app_bottom_bar.dart';
+import '../widgets/detail_barang_dialog.dart';
+import '../widgets/foto_barang.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,324 +16,264 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const _navy = Color(0xFF0B4F7C);
+  static const _ink = Color(0xFF0F2A47);
+  static const _biru = Color(0xFF2C4F7C);
   static const _bg = Color(0xFFEFF6FD);
 
-  int _tab = 0; // 0 Cari, 1 Barang, 2 Pesan, 3 Profil
-  final _searchC = TextEditingController();
+  // dibuat sekali agar tidak membaca ulang Firestore setiap rebuild
+  late final Future<String> _nama = AuthService().namaPengguna();
+  late final Stream<List<ItemBarang>> _stream =
+      BarangService().streamTerbaru(batas: 12);
 
-  // data contoh -> nanti ganti dengan data dari API/database
-  final _quick = const [
-    (Icons.account_balance_wallet_outlined, 'Dompet'),
-    (Icons.smartphone, 'Ponsel'),
-    (Icons.vpn_key_outlined, 'Kunci'),
-    (Icons.credit_card, 'Kartu'),
+  static const _kategori = [
+    ('Dompet', Icons.account_balance_wallet_outlined),
+    ('Ponsel', Icons.smartphone),
+    ('Kunci', Icons.vpn_key_outlined),
+    ('Kartu', Icons.credit_card),
   ];
 
-  final _recent = const [
-    ('Iphone 16 Pro Max', '4 Jam Yang Lalu', 'Parkiran Gedung Utama',
-        'assets/images/iphone.png'),
-    ('Kunci Motor Remote', '2 Jam Yang Lalu', 'Parkiran Gojah Mada',
-        'assets/images/kunci.png'),
-    ('Jam Tangan Merek Seiko', '5 Jam Yang Lalu', 'Tangga Gedung Utama',
-        'assets/images/jam.png'),
-  ];
-
-  @override
-  void dispose() {
-    _searchC.dispose();
-    super.dispose();
-  }
-
-  void _search(String q) {
-    // TODO: arahkan ke halaman hasil pencarian
-    debugPrint('Cari: $q');
-  }
+  String? _tipe; // kategori terpilih, null = semua
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 40, 20, 120),
-              child: Column(
-                children: [
-                  Image.asset('assets/images/logo.png', height: 120),
-                  const SizedBox(height: 24),
-                  Text('SELAMAT DATANG',
-                      style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF0F2A47))),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('STARK!',
-                          style: GoogleFonts.poppins(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF2C4F7C))),
-                      const SizedBox(width: 6),
-                      const Icon(
-                        Icons.waving_hand_rounded,
-                        size: 22,
-                        color: Color(0xFF2C4F7C),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 28),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Cari barang Anda Yang hilang Disini',
-                          style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF2C4F7C))),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.sentiment_satisfied_alt_outlined,
-                          size: 18, color: Color(0xFF2C4F7C)),
-                    ],
-                  ),
-                  const SizedBox(height: 36),
-
-                  // kolom pencarian
-                  Container(
-                    height: 52,
-                    padding: const EdgeInsets.only(left: 20, right: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: _navy.withOpacity(0.6)),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _searchC,
-                            onSubmitted: _search,
-                            style: GoogleFonts.inter(fontSize: 14),
-                            decoration: InputDecoration(
-                              border: InputBorder.none,
-                              hintText: 'Cari Barang...',
-                              hintStyle: GoogleFonts.inter(
-                                  fontSize: 14, color: Colors.grey.shade600),
+            Expanded(
+              child: StreamBuilder<List<ItemBarang>>(
+                stream: _stream,
+                builder: (context, snap) {
+                  final semua = snap.data ?? const <ItemBarang>[];
+                  // tanpa filter: 4 terbaru; dengan filter: yang cocok kategori
+                  final list = _tipe == null
+                      ? semua.take(4).toList()
+                      : semua.where((e) => e.kategori == _tipe).take(6).toList();
+                  return CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(child: _atas()),
+                      if (snap.hasError)
+                        _pesan('Gagal memuat data.\n${snap.error}',
+                            error: true)
+                      else if (!snap.hasData)
+                        const SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 32),
+                            child:
+                                Center(child: CircularProgressIndicator()),
+                          ),
+                        )
+                      else if (list.isEmpty)
+                        _pesan(_tipe == null
+                            ? 'Belum ada laporan'
+                            : 'Belum ada laporan $_tipe')
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(56, 0, 56, 24),
+                          sliver: SliverGrid(
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              mainAxisSpacing: 14,
+                              crossAxisSpacing: 18,
+                              mainAxisExtent: 170,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                              (_, i) => _kartu(list[i]),
+                              childCount: list.length,
                             ),
                           ),
                         ),
-                        GestureDetector(
-                          onTap: () => _search(_searchC.text),
-                          child: Container(
-                            width: 38,
-                            height: 38,
-                            decoration: const BoxDecoration(
-                                color: _navy, shape: BoxShape.circle),
-                            child: const Icon(Icons.search,
-                                color: Colors.white, size: 20),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-
-                  // pencarian cepat
-                  Text('PENCARIAN CEPAT',
-                      style: GoogleFonts.spaceMono(
-                          fontSize: 14, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 14),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    alignment: WrapAlignment.center,
-                    children: _quick
-                        .map((q) => _quickChip(q.$1, q.$2))
-                        .toList(),
-                  ),
-                  const SizedBox(height: 40),
-
-                  // baru-baru ini dilaporkan
-                  Text('BARU-BARU INI DILAPORKAN',
-                      style: GoogleFonts.spaceMono(
-                          fontSize: 14, fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: _recent
-                        .map((r) => Expanded(
-                              child: Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 4),
-                                child: _itemCard(r.$1, r.$2, r.$3, r.$4),
-                              ),
-                            ))
-                        .toList(),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
-
-             const Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: AppBottomBar(currentIndex: 0),
-            ),
+            const AppBottomBar(currentIndex: 0),
           ],
         ),
       ),
     );
   }
 
-  Widget _quickChip(IconData icon, String label) {
-    return InkWell(
-      onTap: () => _search(label),
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _navy),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: _navy),
-            const SizedBox(width: 6),
-            Text(label,
-                style: GoogleFonts.inter(
-                    fontSize: 11, fontWeight: FontWeight.w500)),
-          ],
-        ),
+  SliverToBoxAdapter _pesan(String t, {bool error = false}) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+        child: Text(t,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+                fontSize: 13,
+                color: error ? Colors.red.shade700 : Colors.grey.shade600)),
       ),
     );
   }
 
-  Widget _itemCard(String title, String time, String place, String image) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.grey.shade300),
-      ),
+  Widget _atas() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.asset(image,
-                  width: 42,
-                  height: 42,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                      width: 42, height: 42, color: Colors.grey.shade300)),
-            ),
+          Image.asset('assets/images/logo.png',
+              height: 118,
+              errorBuilder: (_, __, ___) =>
+                  const SizedBox(height: 118, width: 118)),
+          const SizedBox(height: 22),
+          Text('SELAMAT DATANG',
+              style: GoogleFonts.sourceSans3(
+                  fontSize: 26, fontWeight: FontWeight.w800, color: _ink)),
+          FutureBuilder<String>(
+            future: _nama,
+            builder: (_, s) {
+              final n = (s.data ?? '').toUpperCase();
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Flexible(
+                    child: Text(n.isEmpty ? ' ' : '$n!',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.sourceSans3(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: _biru)),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.waving_hand_rounded,
+                      size: 22, color: _biru),
+                ],
+              );
+            },
           ),
-          const SizedBox(height: 10),
-          Text(title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.spaceMono(
-                  fontSize: 8.5, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 6),
-          _meta(Icons.timer_outlined, time),
-          const SizedBox(height: 4),
-          _meta(Icons.location_on_outlined, place),
+          const SizedBox(height: 28),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text('Cari barang Anda Yang hilang Disini',
+                    style: GoogleFonts.sourceSans3(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: _biru)),
+              ),
+              const SizedBox(width: 6),
+              const Icon(Icons.sentiment_satisfied_alt_outlined,
+                  size: 18, color: _biru),
+            ],
+          ),
+          const SizedBox(height: 34),
+          Text('TELUSURI KATEGORI',
+              style: GoogleFonts.sourceSans3(
+                  fontSize: 17, fontWeight: FontWeight.w800, color: _ink)),
+          const SizedBox(height: 16),
+          Row(
+            children: _kategori.map((c) {
+              final aktif = _tipe == c.$1;
+              return Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: InkWell(
+                    onTap: () => setState(() => _tipe = aktif ? null : c.$1),
+                    borderRadius: BorderRadius.circular(10),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: aktif ? _navy : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _navy),
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(c.$2,
+                                size: 15,
+                                color: aktif ? Colors.white : _navy),
+                            const SizedBox(width: 4),
+                            Text(c.$1,
+                                style: GoogleFonts.sourceSans3(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: aktif ? Colors.white : _ink)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 34),
+          Text('BARU-BARU INI DILAPORKAN',
+              style: GoogleFonts.sourceSans3(
+                  fontSize: 17, fontWeight: FontWeight.w800, color: _ink)),
+          const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  Widget _meta(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 11, color: _navy),
-        const SizedBox(width: 3),
-        Expanded(
-          child: Text(text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(fontSize: 6.5)),
-        ),
-      ],
-    );
-  }
-
-  Widget _bottomBar() {
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.topCenter,
-      children: [
-        Container(
-          height: 46,
+  Widget _kartu(ItemBarang b) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => showDetailBarang(context, b),
+        child: Container(
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: _navy.withOpacity(0.5)),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: _navy.withOpacity(0.2)),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _navItem(0, Icons.search, 'CARI'),
-              _navItem(1, Icons.receipt_long_outlined, 'BARANG'),
-              const SizedBox(width: 56), // ruang untuk tombol +
-              _navItem(2, Icons.chat_bubble_outline, 'PESAN'),
-              _navItem(3, Icons.person_outline, 'PROFIL'),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  height: 84,
+                  width: double.infinity,
+                  child: FotoBarang(b.gambar,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Container(color: Colors.grey.shade300)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(b.nama,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.sourceSans3(
+                      fontSize: 13, fontWeight: FontWeight.w800, color: _ink)),
+              const SizedBox(height: 4),
+              _meta(Icons.timer_outlined, b.waktu),
+              const SizedBox(height: 3),
+              _meta(Icons.location_on_outlined, b.lokasi),
             ],
           ),
         ),
-        Positioned(
-          top: -20,
-          child: GestureDetector(
-            onTap: () {
-              // TODO: buka halaman "Laporkan barang"
-            },
-            child: Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: _navy,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2)),
-                ],
-              ),
-              child: const Icon(Icons.add, color: Colors.white, size: 28),
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _navItem(int index, IconData icon, String label) {
-    final selected = _tab == index;
-    return GestureDetector(
-      onTap: () => setState(() => _tab = index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFC9D3F5) : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
+  Widget _meta(IconData icon, String t) {
+    return Row(
+      children: [
+        Icon(icon, size: 12, color: _navy),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(t,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.sourceSans3(fontSize: 10, color: _biru)),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 20, color: _navy),
-            Text(label,
-                style: GoogleFonts.spaceMono(
-                    fontSize: 9, fontWeight: FontWeight.w700, color: _navy)),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }

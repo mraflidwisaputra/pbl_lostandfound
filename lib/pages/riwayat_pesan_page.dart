@@ -1,105 +1,100 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/chat_service.dart';
 import '../widgets/app_bottom_bar.dart';
 import 'chat_page.dart';
 
-class _RingkasanPesan {
-  final String nama;
-  final String pesanTerakhir;
-  final String status; // contoh: "Dibaca 2 Menit Yang lalu" / "Terkirim"
-  final String namaBarang;
-  const _RingkasanPesan({
-    required this.nama,
-    required this.pesanTerakhir,
-    required this.status,
-    required this.namaBarang,
-  });
-}
-
-class RiwayatPesanPage extends StatelessWidget {
+class RiwayatPesanPage extends StatefulWidget {
   const RiwayatPesanPage({super.key});
 
+  @override
+  State<RiwayatPesanPage> createState() => _RiwayatPesanPageState();
+}
+
+class _RiwayatPesanPageState extends State<RiwayatPesanPage> {
   static const _navy = Color(0xFF0B4F7C);
+  static const _ink = Color(0xFF0F2A47);
   static const _bg = Color(0xFFEFF6FD);
 
-  // data contoh -> ganti dengan data dari API/database
-  static const _daftar = [
-    _RingkasanPesan(
-        nama: 'Admin',
-        pesanTerakhir: 'Baik min',
-        status: 'Dibaca 2 Menit Yang lalu',
-        namaBarang: 'Jam Tangan Seiko'),
-    _RingkasanPesan(
-        nama: 'Admin',
-        pesanTerakhir: 'Di Gedung Utama Pak',
-        status: 'Dibaca 5 Menit Yang lalu',
-        namaBarang: 'Kunci Motor Remote'),
-    _RingkasanPesan(
-        nama: 'Admin',
-        pesanTerakhir: 'Siap pak',
-        status: 'Terkirim',
-        namaBarang: 'Iphone 16 Pro Max'),
-  ];
+  final _service = ChatService();
+  late final Stream<List<RingkasanChat>> _stream =
+      _service.streamRiwayatChat();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
-        child: Stack(
+        child: Column(
           children: [
-            Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Image.asset('assets/images/logo.png',
-                        height: 60,
-                        errorBuilder: (_, __, ___) =>
-                            const SizedBox(height: 60)),
-                  ),
-                ),
-                const SizedBox(height: 28),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 44),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text('Riwayat Pesan',
-                        style: GoogleFonts.poppins(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: const Color(0xFF0F2A47))),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Expanded(
-                  child: _daftar.isEmpty
-                      ? Center(
-                          child: Text('Belum ada pesan',
-                              style: GoogleFonts.inter(
-                                  fontSize: 14, color: Colors.grey.shade600)),
-                        )
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(44, 0, 44, 24),
-                          itemCount: _daftar.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(height: 16),
-                          itemBuilder: (context, i) =>
-                              _kartu(context, _daftar[i]),
-                        ),
-                ),
-                const AppBottomBar(currentIndex: 3),
-              ],
+            // logo
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Image.asset('assets/images/logo.png',
+                    height: 60,
+                    errorBuilder: (_, __, ___) =>
+                        const SizedBox(height: 60)),
+              ),
             ),
+            const SizedBox(height: 28),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 44),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Riwayat Pesan',
+                    style: GoogleFonts.poppins(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: _ink)),
+              ),
+            ),
+            const SizedBox(height: 18),
 
+            // daftar percakapan dari Firestore
+            Expanded(
+              child: StreamBuilder<List<RingkasanChat>>(
+                stream: _stream,
+                builder: (context, snap) {
+                  if (snap.hasError) {
+                    return Center(
+                      child: Text('Gagal memuat pesan\n${snap.error}',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.inter(
+                              fontSize: 12, color: Colors.red.shade700)),
+                    );
+                  }
+                  if (!snap.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final daftar = snap.data!;
+                  if (daftar.isEmpty) {
+                    return Center(
+                      child: Text('Belum ada pesan',
+                          style: GoogleFonts.inter(
+                              fontSize: 14, color: Colors.grey.shade600)),
+                    );
+                  }
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(44, 0, 44, 24),
+                    itemCount: daftar.length,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: 16),
+                    itemBuilder: (context, i) =>
+                        _kartu(context, daftar[i]),
+                  );
+                },
+              ),
+            ),
+            const AppBottomBar(currentIndex: 3),
           ],
         ),
       ),
     );
   }
 
-  Widget _kartu(BuildContext context, _RingkasanPesan p) {
+  Widget _kartu(BuildContext context, RingkasanChat p) {
     return Material(
       color: _navy,
       borderRadius: BorderRadius.circular(10),
@@ -109,8 +104,11 @@ class RiwayatPesanPage extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) =>
-                  ChatPage(namaLawan: p.nama, namaBarang: p.namaBarang),
+              builder: (_) => ChatPage(
+                chatId: p.chatId,
+                namaLawan: p.namaLawan,
+                namaBarang: p.namaBarang,
+              ),
             ),
           );
         },
@@ -136,17 +134,19 @@ class RiwayatPesanPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(p.nama,
+                          child: Text(p.namaLawan,
                               style: GoogleFonts.poppins(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white)),
                         ),
-                        Text(p.status,
+                        Text(p.statusLabel,
                             style: GoogleFonts.inter(
                                 fontSize: 8,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white)),
+                                color: p.sudahDibaca
+                                    ? Colors.white70
+                                    : Colors.amber.shade200)),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -154,7 +154,7 @@ class RiwayatPesanPage extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
-                            fontSize: 12, color: Colors.white)),
+                            fontSize: 12, color: Colors.white70)),
                   ],
                 ),
               ),

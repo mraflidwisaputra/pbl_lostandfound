@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/item_barang.dart';
+import '../services/chat_service.dart';
 import 'ajukan_klaim_page.dart';
 
-class _Pesan {
-  final String teks;
-  final bool dariSaya;
-  _Pesan(this.teks, this.dariSaya);
-}
-
 class ChatPage extends StatefulWidget {
+  /// [chatId] diisi jika chat sudah ada (dari riwayat pesan).
+  /// Jika null, [barang] wajib diisi untuk membuat chat baru.
+  final String? chatId;
   final String namaLawan;
   final String namaBarang;
-  final ItemBarang? barang; // opsional: data barang untuk form klaim
+  final ItemBarang? barang;
+
   const ChatPage({
     super.key,
+    this.chatId,
     required this.namaLawan,
     required this.namaBarang,
     this.barang,
@@ -30,15 +30,47 @@ class _ChatPageState extends State<ChatPage> {
 
   final _inputC = TextEditingController();
   final _scrollC = ScrollController();
+  final _service = ChatService();
 
-  // data contoh -> ganti dengan data dari server / Firebase
-  final List<_Pesan> _pesan = [
-    _Pesan('Pesan...', true),
-    _Pesan('Pesan...', false),
-    _Pesan('Pesan....', true),
-    _Pesan('Pesan...', false),
-    _Pesan('Baik min', true),
-  ];
+  String? _chatId;
+  bool _inisialisasi = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.chatId != null) {
+      _chatId = widget.chatId;
+      _tandaiDibaca();
+    } else {
+      _inisialisasiChat();
+    }
+  }
+
+  Future<void> _inisialisasiChat() async {
+    final b = widget.barang;
+    if (b == null) return;
+    try {
+      // Admin UID – gunakan pemilikUid barang jika tersedia,
+      // jika tidak ada fallback ke empty (admin harus sudah ada di Firestore)
+      final id = await _service.buatAtauAmbilChat(
+        barangId: b.id,
+        namaBarang: b.nama,
+        adminUid: b.pemilikUid.isNotEmpty ? b.pemilikUid : 'admin',
+        adminNama: b.pemosting,
+      );
+      if (mounted) {
+        setState(() => _chatId = id);
+        _tandaiDibaca();
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    }
+  }
+
+  void _tandaiDibaca() {
+    if (_chatId != null) _service.tandaiDibaca(_chatId!);
+  }
 
   @override
   void dispose() {
@@ -47,12 +79,23 @@ class _ChatPageState extends State<ChatPage> {
     super.dispose();
   }
 
-  void _kirim() {
+  Future<void> _kirim() async {
     final teks = _inputC.text.trim();
-    if (teks.isEmpty) return;
-    setState(() => _pesan.add(_Pesan(teks, true)));
+    if (teks.isEmpty || _chatId == null) return;
     _inputC.clear();
-    // gulir ke pesan terbaru
+    try {
+      await _service.kirimPesan(_chatId!, teks);
+      _gulirBawah();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal kirim: $e')),
+        );
+      }
+    }
+  }
+
+  void _gulirBawah() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollC.hasClients) {
         _scrollC.animateTo(
@@ -87,17 +130,45 @@ class _ChatPageState extends State<ChatPage> {
         child: Column(
           children: [
             _header(),
-            Expanded(
-              child: ListView(
-                controller: _scrollC,
-                padding: const EdgeInsets.fromLTRB(14, 24, 14, 12),
-                children: [
-                  ..._pesan.map(_bubble),
-                  const SizedBox(height: 28),
-                  _klaimCard(),
-                ],
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('Error: $_error',
+                    style: const TextStyle(color: Colors.red)),
+              )
+            else if (_chatId == null)
+              const Expanded(
+                  child: Center(child: CircularProgressIndicator()))
+            else
+              Expanded(
+                child: StreamBuilder<List<PesanChat>>(
+                  stream: _service.streamPesan(_chatId!),
+                  builder: (context, snap) {
+                    if (snap.hasError) {
+                      return Center(
+                          child: Text('Gagal memuat pesan: ${snap.error}',
+                              style:
+                                  const TextStyle(color: Colors.red)));
+                    }
+                    final pesan = snap.data ?? [];
+                    // Auto scroll ke bawah saat ada pesan baru
+                    if (snap.hasData) {
+                      WidgetsBinding.instance
+                          .addPostFrameCallback((_) => _gulirBawah());
+                    }
+                    return ListView(
+                      controller: _scrollC,
+                      padding:
+                          const EdgeInsets.fromLTRB(14, 24, 14, 12),
+                      children: [
+                        ...pesan.map(_bubble),
+                        const SizedBox(height: 28),
+                        _klaimCard(),
+                      ],
+                    );
+                  },
+                ),
               ),
-            ),
             _inputBar(),
           ],
         ),
@@ -133,9 +204,7 @@ class _ChatPageState extends State<ChatPage> {
           IconButton(
             icon: const Icon(Icons.outlined_flag),
             tooltip: 'Laporkan',
-            onPressed: () {
-              // TODO: laporkan percakapan
-            },
+            onPressed: () {},
           ),
           CircleAvatar(
             radius: 20,
@@ -147,7 +216,7 @@ class _ChatPageState extends State<ChatPage> {
     );
   }
 
-  Widget _bubble(_Pesan p) {
+  Widget _bubble(PesanChat p) {
     final saya = p.dariSaya;
     return Align(
       alignment: saya ? Alignment.centerRight : Alignment.centerLeft,
@@ -193,6 +262,8 @@ class _ChatPageState extends State<ChatPage> {
                 height: 50,
                 decoration: const BoxDecoration(
                     color: Color(0xFF365B85), shape: BoxShape.circle),
+                child: const Icon(Icons.inventory_2_outlined,
+                    color: Colors.white, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -204,7 +275,8 @@ class _ChatPageState extends State<ChatPage> {
                             fontSize: 14,
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFF0F2A47))),
-                    Text('Ajukan Klaim untuk Memverifikasi kepemilikan barang',
+                    Text(
+                        'Ajukan Klaim untuk Memverifikasi kepemilikan barang',
                         style: GoogleFonts.inter(fontSize: 9)),
                   ],
                 ),
@@ -214,7 +286,7 @@ class _ChatPageState extends State<ChatPage> {
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
-            height: 30,
+            height: 36,
             child: ElevatedButton.icon(
               onPressed: _ajukanKlaim,
               icon: const Icon(Icons.verified_outlined, size: 16),
@@ -226,7 +298,7 @@ class _ChatPageState extends State<ChatPage> {
                 foregroundColor: Colors.white,
                 elevation: 0,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4)),
+                    borderRadius: BorderRadius.circular(6)),
               ),
             ),
           ),
@@ -239,11 +311,11 @@ class _ChatPageState extends State<ChatPage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
       child: Container(
-        height: 42,
+        height: 48,
         padding: const EdgeInsets.only(left: 6, right: 5),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: _navy.withOpacity(0.6)),
         ),
         child: Row(
@@ -252,9 +324,7 @@ class _ChatPageState extends State<ChatPage> {
               icon: const Icon(Icons.add, size: 20),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-              onPressed: () {
-                // TODO: lampirkan foto / file
-              },
+              onPressed: () {},
             ),
             Expanded(
               child: TextField(
@@ -266,19 +336,19 @@ class _ChatPageState extends State<ChatPage> {
                   isDense: true,
                   hintText: 'Masukkan Pesan...',
                   hintStyle: GoogleFonts.inter(
-                      fontSize: 13, color: Colors.grey.shade700),
+                      fontSize: 13, color: Colors.grey.shade500),
                 ),
               ),
             ),
             GestureDetector(
               onTap: _kirim,
               child: Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(
-                    color: _navy, shape: BoxShape.circle),
-                child:
-                    const Icon(Icons.send_rounded, size: 16, color: Colors.white),
+                width: 34,
+                height: 34,
+                decoration:
+                    const BoxDecoration(color: _navy, shape: BoxShape.circle),
+                child: const Icon(Icons.send_rounded,
+                    size: 17, color: Colors.white),
               ),
             ),
           ],

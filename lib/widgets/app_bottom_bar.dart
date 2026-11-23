@@ -77,10 +77,10 @@ class AppBottomBar extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _item(context, 0, Icons.search, 'CARI'),
+                      _item(context, 0, Icons.home_outlined, 'BERANDA'),
                       _item(context, 1, Icons.receipt_long_outlined, 'BARANG'),
                       _item(context, 2, Icons.assignment_outlined,
-                          'RIWAYAT\nLAPORAN'),
+                          'RIWAYAT'),
                       _item(context, 3, Icons.chat_bubble_outline, 'PESAN'),
                       _item(context, 4, Icons.person_outline, 'PROFIL'),
                     ],
@@ -159,7 +159,7 @@ class AppBottomBar extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: () => _go(context, i),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
         decoration: BoxDecoration(
           color: selected ? const Color(0xFFC9D3F5) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
@@ -171,10 +171,10 @@ class AppBottomBar extends StatelessWidget {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: GoogleFonts.spaceMono(
-                  fontSize: 8,
+              style: GoogleFonts.sourceSans3(
+                  fontSize: 10,
                   height: 1.1,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
                   color: _navy),
             ),
           ],

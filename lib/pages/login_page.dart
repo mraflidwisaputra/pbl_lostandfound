@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'home_page.dart';
 import 'dashboard_admin.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../widgets/wave_background.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,7 +19,9 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final _emailC = TextEditingController();
   final _passC = TextEditingController();
-  bool _isAdmin = false; // false = Civitas Akademik, true = Admin
+  // null = belum memilih. Pilihan: Mahasiswa, Staff Kampus, Dosen, Admin
+  String? _jenisUser;
+  static const _jenisList = ['Mahasiswa', 'Staff Kampus', 'Dosen', 'Admin'];
   bool _obscure = true;
   bool _isLoading = false;
   String? _errorMessage;
@@ -31,6 +34,10 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
+    if (_jenisUser == null) {
+      setState(() => _errorMessage = 'Silahkan pilih jenis user terlebih dahulu');
+      return;
+    }
     if (_emailC.text.trim().isEmpty || _passC.text.trim().isEmpty) {
       setState(() => _errorMessage = 'Email dan password tidak boleh kosong');
       return;
@@ -45,7 +52,8 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passC.text.trim(),
       );
       if (!mounted) return;
-      if (_isAdmin) {
+      // Admin -> Dashboard Admin; Mahasiswa / Staff Kampus / Dosen -> Beranda
+      if (_jenisUser == 'Admin') {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => const DashboardAdminPage()),
@@ -96,45 +104,9 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: _bg,
       body: Stack(
         children: [
-          // dekorasi lengkung biru muda
-          Positioned(
-            top: -60,
-            right: -60,
-            child: Container(
-              width: 220,
-              height: 180,
-              decoration: const BoxDecoration(
-                color: Color(0xFFDCE9F8),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            top: -40,
-            left: -60,
-            child: Container(
-              width: 200,
-              height: 120,
-              decoration: BoxDecoration(
-                color: const Color(0xFFDCE9F8),
-                borderRadius: BorderRadius.circular(80),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 150,
-              decoration: const BoxDecoration(
-                color: Color(0xFFDCE9F8),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(200),
-                  topRight: Radius.circular(200),
-                ),
-              ),
-            ),
+          // latar gelombang biru muda
+          const Positioned.fill(
+            child: WaveBackground(child: SizedBox.shrink()),
           ),
 
           // kartu login
@@ -177,17 +149,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 28),
 
-                    // toggle Civitas Akademik / Admin
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _roleButton('Civitas Akademik', !_isAdmin,
-                            () => setState(() => _isAdmin = false)),
-                        _roleButton('Admin', _isAdmin,
-                            () => setState(() => _isAdmin = true)),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
+                    // pilih jenis user
+                    _dropdownUser(),
+                    const SizedBox(height: 20),
 
                     _field(
                       controller: _emailC,
@@ -277,24 +241,39 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _roleButton(String label, bool selected, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
+  Widget _dropdownUser() {
+    const ink = Color(0xFF0F2A47);
+    final gaya = GoogleFonts.poppins(
+        fontSize: 11, fontWeight: FontWeight.w600, color: ink);
+    return Center(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        width: 190,
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: BoxDecoration(
-          color: selected ? _navy : Colors.white,
-          border: Border.all(color: selected ? _navy : Colors.grey.shade500),
-          borderRadius: BorderRadius.horizontal(
-            left: Radius.circular(label == 'Admin' ? 0 : 6),
-            right: Radius.circular(label == 'Admin' ? 6 : 0),
-          ),
+          color: const Color(0xFFF7FAFE),
+          border: Border.all(color: _navy),
+          borderRadius: BorderRadius.circular(6),
         ),
-        child: Text(
-          label,
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            color: selected ? Colors.white : const Color(0xFF0F2A47),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: _jenisUser,
+            isExpanded: true,
+            icon: const Icon(Icons.keyboard_arrow_down, size: 20, color: ink),
+            dropdownColor: const Color(0xFFF7FAFE),
+            borderRadius: BorderRadius.circular(6),
+            style: gaya,
+            hint: Text('Silahkan Pilih User', style: gaya),
+            items: [
+              DropdownMenuItem<String>(
+                  value: null, child: Text('Pilih Jenis User', style: gaya)),
+              ..._jenisList.map((e) => DropdownMenuItem<String>(
+                  value: e, child: Text(e, style: gaya))),
+            ],
+            onChanged: (v) => setState(() {
+              _jenisUser = v;
+              _errorMessage = null;
+            }),
           ),
         ),
       ),
@@ -322,7 +301,7 @@ class _LoginScreenState extends State<LoginScreen> {
         hintStyle: GoogleFonts.poppins(
           fontSize: 13,
           fontWeight: FontWeight.w500,
-          color: const Color(0xFF8F9BD6),
+          color: const Color(0xB3102A43),
         ),
         prefixIcon: Icon(icon, color: const Color(0xFF0F2A47)),
         suffixIcon: suffix,
