@@ -16,9 +16,9 @@ class _RiwayatPesanPageState extends State<RiwayatPesanPage> {
   static const _ink = Color(0xFF0F2A47);
   static const _bg = Color(0xFFEFF6FD);
 
-  final _service = ChatService();
+  // dibuat sekali agar tidak berlangganan ulang tiap rebuild
   late final Stream<List<RingkasanChat>> _stream =
-      _service.streamRiwayatChat();
+      ChatService().streamDaftar();
 
   @override
   Widget build(BuildContext context) {
@@ -27,42 +27,39 @@ class _RiwayatPesanPageState extends State<RiwayatPesanPage> {
       body: SafeArea(
         child: Column(
           children: [
-            // logo
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Image.asset('assets/images/logo.png',
                     height: 60,
-                    errorBuilder: (_, __, ___) =>
-                        const SizedBox(height: 60)),
+                    errorBuilder: (_, __, ___) => const SizedBox(height: 60)),
               ),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 44),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text('Riwayat Pesan',
-                    style: GoogleFonts.poppins(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: _ink)),
+                    style: GoogleFonts.sourceSans3(
+                        fontSize: 28, fontWeight: FontWeight.w800, color: _ink)),
               ),
             ),
             const SizedBox(height: 18),
-
-            // daftar percakapan dari Firestore
             Expanded(
               child: StreamBuilder<List<RingkasanChat>>(
                 stream: _stream,
                 builder: (context, snap) {
                   if (snap.hasError) {
                     return Center(
-                      child: Text('Gagal memuat pesan\n${snap.error}',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
-                              fontSize: 12, color: Colors.red.shade700)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text('Gagal memuat pesan.\n${snap.error}',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.sourceSans3(
+                                fontSize: 13, color: Colors.red.shade700)),
+                      ),
                     );
                   }
                   if (!snap.hasData) {
@@ -72,17 +69,15 @@ class _RiwayatPesanPageState extends State<RiwayatPesanPage> {
                   if (daftar.isEmpty) {
                     return Center(
                       child: Text('Belum ada pesan',
-                          style: GoogleFonts.inter(
-                              fontSize: 14, color: Colors.grey.shade600)),
+                          style: GoogleFonts.sourceSans3(
+                              fontSize: 15, color: Colors.grey.shade600)),
                     );
                   }
                   return ListView.separated(
                     padding: const EdgeInsets.fromLTRB(44, 0, 44, 24),
                     itemCount: daftar.length,
-                    separatorBuilder: (_, __) =>
-                        const SizedBox(height: 16),
-                    itemBuilder: (context, i) =>
-                        _kartu(context, daftar[i]),
+                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                    itemBuilder: (_, i) => _kartu(daftar[i]),
                   );
                 },
               ),
@@ -94,7 +89,7 @@ class _RiwayatPesanPageState extends State<RiwayatPesanPage> {
     );
   }
 
-  Widget _kartu(BuildContext context, RingkasanChat p) {
+  Widget _kartu(RingkasanChat c) {
     return Material(
       color: _navy,
       borderRadius: BorderRadius.circular(10),
@@ -105,9 +100,11 @@ class _RiwayatPesanPageState extends State<RiwayatPesanPage> {
             context,
             MaterialPageRoute(
               builder: (_) => ChatPage(
-                chatId: p.chatId,
-                namaLawan: p.namaLawan,
-                namaBarang: p.namaBarang,
+                chatId: c.chatId,
+                lawanUid: c.lawanUid,
+                lawanNama: c.lawanNama,
+                barangId: c.barangId,
+                namaBarang: c.barangNama,
               ),
             ),
           );
@@ -120,10 +117,10 @@ class _RiwayatPesanPageState extends State<RiwayatPesanPage> {
           ),
           child: Row(
             children: [
-              CircleAvatar(
+              const CircleAvatar(
                 radius: 25,
-                backgroundColor: const Color(0xFFD9D9D9),
-                child: const Icon(Icons.person, size: 38, color: Colors.white),
+                backgroundColor: Color(0xFFD9D9D9),
+                child: Icon(Icons.person, size: 38, color: Colors.white),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -134,27 +131,28 @@ class _RiwayatPesanPageState extends State<RiwayatPesanPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Expanded(
-                          child: Text(p.namaLawan,
-                              style: GoogleFonts.poppins(
-                                  fontSize: 15,
+                          child: Text(c.lawanNama,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.sourceSans3(
+                                  fontSize: 19,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white)),
                         ),
-                        Text(p.statusLabel,
-                            style: GoogleFonts.inter(
-                                fontSize: 8,
-                                fontWeight: FontWeight.w600,
-                                color: p.sudahDibaca
-                                    ? Colors.white70
-                                    : Colors.amber.shade200)),
+                        Text(c.status,
+                            style: GoogleFonts.sourceSans3(
+                                fontSize: 10, color: Colors.white)),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(p.pesanTerakhir,
+                    const SizedBox(height: 2),
+                    Text(c.pesanTerakhir,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.inter(
-                            fontSize: 12, color: Colors.white70)),
+                        style: GoogleFonts.sourceSans3(
+                            fontSize: 14,
+                            fontWeight:
+                                c.belumDibaca ? FontWeight.w800 : FontWeight.w400,
+                            color: Colors.white)),
                   ],
                 ),
               ),

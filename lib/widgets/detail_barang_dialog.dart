@@ -1,8 +1,10 @@
 import 'dart:ui';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/item_barang.dart';
 import '../pages/chat_page.dart';
+import '../services/chat_service.dart';
 import 'foto_barang.dart';
 
 /// Membuka popup detail barang (latar blur). Dipakai di Beranda & Daftar Barang.
@@ -25,18 +27,48 @@ void showDetailBarang(BuildContext context, ItemBarang item) {
   );
 }
 
-/// Popup detail barang dengan latar blur.
 class DetailBarangDialog extends StatelessWidget {
   final ItemBarang item;
-  const DetailBarangDialog({required this.item});
+  const DetailBarangDialog({super.key, required this.item});
 
   static const _navy = Color(0xFF0B4F7C);
+  static const _ink = Color(0xFF0F2A47);
+
+  void _kirimPesan(BuildContext context) {
+    final nav = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final me = FirebaseAuth.instance.currentUser;
+
+    String? masalah;
+    if (me == null) {
+      masalah = 'Silakan login terlebih dahulu';
+    } else if (item.id.isEmpty || item.pemilikUid.isEmpty) {
+      masalah = 'Pemilik laporan ini tidak dapat dihubungi';
+    } else if (item.pemilikUid == me.uid) {
+      masalah = 'Ini adalah laporan Anda sendiri';
+    }
+
+    nav.pop(); // tutup popup dulu
+    if (masalah != null) {
+      messenger.showSnackBar(SnackBar(content: Text(masalah)));
+      return;
+    }
+    nav.push(MaterialPageRoute(
+      builder: (_) => ChatPage(
+        chatId: ChatService.idChat(item.id, me!.uid, item.pemilikUid),
+        lawanUid: item.pemilikUid,
+        lawanNama: item.pemosting,
+        barangId: item.id,
+        namaBarang: item.nama,
+        barang: item,
+      ),
+    ));
+  }
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // latar blur, ketuk untuk menutup
         Positioned.fill(
           child: GestureDetector(
             onTap: () => Navigator.pop(context),
@@ -54,13 +86,13 @@ class DetailBarangDialog extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // gambar + tombol X
                   ClipRRect(
                     borderRadius:
                         const BorderRadius.vertical(top: Radius.circular(6)),
                     child: Stack(
                       children: [
-                        FotoBarang(item.gambar,
+                        FotoBarang(
+                          item.gambar,
                           width: double.infinity,
                           height: 220,
                           fit: BoxFit.cover,
@@ -79,7 +111,8 @@ class DetailBarangDialog extends StatelessWidget {
                               width: 24,
                               height: 24,
                               decoration: const BoxDecoration(
-                                  color: Colors.black87, shape: BoxShape.circle),
+                                  color: Colors.black87,
+                                  shape: BoxShape.circle),
                               child: const Icon(Icons.close,
                                   size: 14, color: Colors.white),
                             ),
@@ -88,10 +121,9 @@ class DetailBarangDialog extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // isi
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 20),
                     decoration: BoxDecoration(
                       color: const Color(0xFFDCE9F8),
                       borderRadius: const BorderRadius.vertical(
@@ -102,26 +134,33 @@ class DetailBarangDialog extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(item.nama,
-                            style: GoogleFonts.poppins(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF0F2A47))),
+                            style: GoogleFonts.sourceSans3(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: _ink)),
                         const SizedBox(height: 4),
                         Row(
                           children: [
                             const Icon(Icons.location_on_outlined,
                                 size: 14, color: _navy),
                             const SizedBox(width: 4),
-                            Text(item.lokasi,
-                                style: GoogleFonts.inter(
-                                    fontSize: 11, fontWeight: FontWeight.w600)),
+                            Expanded(
+                              child: Text(item.lokasi,
+                                  style: GoogleFonts.sourceSans3(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: _ink)),
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 18),
-                        Text(item.deskripsi,
-                            style: GoogleFonts.inter(
-                                fontSize: 12, color: const Color(0xFF0F2A47))),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 16),
+                        Text(
+                            item.deskripsi.isEmpty
+                                ? 'Tidak ada deskripsi'
+                                : item.deskripsi,
+                            style: GoogleFonts.sourceSans3(
+                                fontSize: 13, color: _ink)),
+                        const SizedBox(height: 20),
                         Center(
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -145,11 +184,13 @@ class DetailBarangDialog extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text('Diposting Oleh',
-                                        style: GoogleFonts.inter(fontSize: 9)),
+                                        style: GoogleFonts.sourceSans3(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: _ink)),
                                     Text(item.pemosting,
-                                        style: GoogleFonts.inter(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700)),
+                                        style: GoogleFonts.sourceSans3(
+                                            fontSize: 12, color: _ink)),
                                   ],
                                 ),
                                 const SizedBox(width: 24),
@@ -160,25 +201,12 @@ class DetailBarangDialog extends StatelessWidget {
                         const SizedBox(height: 12),
                         Center(
                           child: ElevatedButton.icon(
-                            onPressed: () {
-                              final nav = Navigator.of(context);
-                              nav.pop();
-                              nav.push(
-                                MaterialPageRoute(
-                                  builder: (_) => ChatPage(
-                                    namaLawan: item.pemosting,
-                                    namaBarang: item.nama,
-                                    barang: item,
-                                    // chatId null → akan dibuat baru oleh ChatPage
-                                  ),
-                                ),
-                              );
-                            },
+                            onPressed: () => _kirimPesan(context),
                             icon: const Icon(Icons.chat_bubble_outline,
                                 size: 14),
                             label: Text('KIRIM PESAN',
-                                style: GoogleFonts.spaceMono(
-                                    fontSize: 11, fontWeight: FontWeight.w700)),
+                                style: GoogleFonts.sourceSans3(
+                                    fontSize: 12, fontWeight: FontWeight.w800)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _navy,
                               foregroundColor: Colors.white,

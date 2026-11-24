@@ -1,7 +1,8 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'riwayat_laporan_page.dart';
+import '../services/barang_service.dart';
+import 'home_page.dart';
 import 'sukses_page.dart';
 
 class LaporBarangPage extends StatefulWidget {
@@ -34,6 +35,7 @@ class _LaporBarangPageState extends State<LaporBarangPage> {
   String _kategori = 'Hilang'; // Hilang / Temuan
   String? _tipe;
   DateTime? _waktu;
+  bool _mengirim = false;
 
   bool get _hilang => _kategori == 'Hilang';
 
@@ -62,40 +64,60 @@ class _LaporBarangPageState extends State<LaporBarangPage> {
     final t = await showTimePicker(
         context: context, initialTime: TimeOfDay.now());
     if (!mounted) return;
-    setState(() =>
-        _waktu = DateTime(d.year, d.month, d.day, t?.hour ?? 0, t?.minute ?? 0));
+    setState(() => _waktu =
+        DateTime(d.year, d.month, d.day, t?.hour ?? 0, t?.minute ?? 0));
   }
 
-  void _kirim() {
+  void _pesan(String t) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(t)));
+  }
+
+  /// Simpan laporan ke Firestore (koleksi "barang"), lalu tampilkan layar sukses.
+  Future<void> _kirim() async {
+    if (_mengirim) return;
     if (_namaC.text.trim().isEmpty ||
         _tipe == null ||
         _lokasiC.text.trim().isEmpty ||
         _waktu == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Lengkapi nama, tipe, lokasi, dan waktu terlebih dahulu')),
-      );
+      _pesan('Lengkapi nama, tipe, lokasi, dan waktu terlebih dahulu');
       return;
     }
-    // TODO: kirim data laporan (+ foto widget.foto) ke server/database
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SuksesPage(
-          pesan: 'LAPORAN BERHASIL DITAMBAHKAN!',
-          tujuan: (_) => const RiwayatLaporanPage(),
+    setState(() => _mengirim = true);
+    try {
+      await BarangService().tambah(
+        nama: _namaC.text.trim(),
+        kategori: _kategori,
+        tipe: _tipe!,
+        lokasi: _lokasiC.text.trim(),
+        waktu: _waktu!,
+        detail: _detailC.text.trim(),
+        foto: widget.foto,
+      );
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SuksesPage(
+            pesan: 'LAPORAN BERHASIL DITAMBAHKAN!',
+            // laporan baru langsung terlihat di "Baru-baru ini dilaporkan"
+            tujuan: (_) => const HomeScreen(),
+          ),
         ),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _mengirim = false);
+      _pesan(e.toString().replaceFirst('Exception: ', ''));
+    }
   }
 
   InputDecoration _dekor(String hint) => InputDecoration(
         isDense: true,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: const Color(0xFFF7FAFE),
         hintText: hint,
-        hintStyle:
-            GoogleFonts.inter(fontSize: 12, color: Colors.grey.shade500),
+        hintStyle: GoogleFonts.sourceSans3(
+            fontSize: 13, color: Colors.grey.shade500),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         enabledBorder: OutlineInputBorder(
@@ -111,41 +133,42 @@ class _LaporBarangPageState extends State<LaporBarangPage> {
   Widget _label(String t) => Padding(
         padding: const EdgeInsets.only(bottom: 4, top: 12),
         child: Text(t,
-            style: GoogleFonts.poppins(
-                fontSize: 12, fontWeight: FontWeight.w600, color: _ink)),
+            style: GoogleFonts.sourceSans3(
+                fontSize: 13, fontWeight: FontWeight.w700, color: _ink)),
       );
+
+  TextStyle get _isi => GoogleFonts.sourceSans3(fontSize: 15, color: _ink);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _bg,
-      appBar: AppBar(
-        backgroundColor: _bg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        iconTheme: const IconThemeData(color: _ink),
-        title: Text('Laporkan Barang',
-            style: GoogleFonts.poppins(
-                fontSize: 18, fontWeight: FontWeight.w600, color: _ink)),
-      ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(26, 4, 26, 28),
+          padding: const EdgeInsets.fromLTRB(26, 16, 26, 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(22),
-                child: Image.memory(widget.foto,
-                    width: double.infinity, height: 235, fit: BoxFit.cover),
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: _navy.withOpacity(0.6)),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(21),
+                  child: Image.memory(widget.foto,
+                      width: double.infinity, height: 235, fit: BoxFit.cover),
+                ),
               ),
               const SizedBox(height: 20),
+
               _label('Nama Barang'),
               TextField(
                 controller: _namaC,
-                style: GoogleFonts.inter(fontSize: 13),
+                style: GoogleFonts.sourceSans3(fontSize: 14),
                 decoration: _dekor('Masukkan Nama Barang...'),
               ),
+
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -158,11 +181,29 @@ class _LaporBarangPageState extends State<LaporBarangPage> {
                           value: _kategori,
                           isExpanded: true,
                           decoration: _dekor(''),
-                          style: GoogleFonts.poppins(
-                              fontSize: 13, color: _ink),
-                          items: const ['Hilang', 'Temuan']
+                          icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                          dropdownColor: const Color(0xFFF7FAFE),
+                          borderRadius: BorderRadius.circular(8),
+                          style: _isi,
+                          // tampilan saat tertutup: hanya teks
+                          selectedItemBuilder: (_) => ['Hilang', 'Temuan']
+                              .map((e) => Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(e, style: _isi)))
+                              .toList(),
+                          // tampilan saat terbuka: ada centang pada yang dipilih
+                          items: ['Hilang', 'Temuan']
                               .map((e) => DropdownMenuItem(
-                                  value: e, child: Text(e)))
+                                    value: e,
+                                    child: Row(
+                                      children: [
+                                        Expanded(child: Text(e, style: _isi)),
+                                        if (e == _kategori)
+                                          const Icon(Icons.check,
+                                              size: 16, color: _navy),
+                                      ],
+                                    ),
+                                  ))
                               .toList(),
                           onChanged: (v) =>
                               setState(() => _kategori = v ?? 'Hilang'),
@@ -180,19 +221,24 @@ class _LaporBarangPageState extends State<LaporBarangPage> {
                           value: _tipe,
                           isExpanded: true,
                           decoration: _dekor(''),
-                          hint: Text('Pilih Tipe',
-                              style: GoogleFonts.poppins(
-                                  fontSize: 13, color: _ink)),
-                          style: GoogleFonts.poppins(
-                              fontSize: 13, color: _ink),
+                          icon: const Icon(Icons.keyboard_arrow_down, size: 20),
+                          dropdownColor: const Color(0xFFF7FAFE),
+                          borderRadius: BorderRadius.circular(8),
+                          style: _isi,
+                          hint: Text('Pilih Tipe', style: _isi),
+                          selectedItemBuilder: (_) => _tipeList
+                              .map((e) => Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(e.$1, style: _isi)))
+                              .toList(),
                           items: _tipeList
                               .map((e) => DropdownMenuItem(
                                     value: e.$1,
                                     child: Row(
                                       children: [
                                         Icon(e.$2, size: 18, color: _navy),
-                                        const SizedBox(width: 8),
-                                        Text(e.$1),
+                                        const SizedBox(width: 10),
+                                        Text(e.$1, style: _isi),
                                       ],
                                     ),
                                   ))
@@ -204,12 +250,14 @@ class _LaporBarangPageState extends State<LaporBarangPage> {
                   ),
                 ],
               ),
+
               _label(_hilang ? 'Lokasi Barang Hilang' : 'Lokasi Barang Temuan'),
               TextField(
                 controller: _lokasiC,
-                style: GoogleFonts.inter(fontSize: 13),
+                style: GoogleFonts.sourceSans3(fontSize: 14),
                 decoration: _dekor('Masukkan Nama Lokasi...'),
               ),
+
               _label(_hilang ? 'Waktu Kehilangan' : 'Waktu Penemuan'),
               InkWell(
                 onTap: _pilihWaktu,
@@ -218,54 +266,65 @@ class _LaporBarangPageState extends State<LaporBarangPage> {
                   decoration: _dekor(''),
                   child: Text(
                     _waktu == null ? 'Pilih tanggal dan jam...' : _fmt(_waktu!),
-                    style: GoogleFonts.inter(
-                        fontSize: 12,
+                    style: GoogleFonts.sourceSans3(
+                        fontSize: 14,
                         color: _waktu == null
                             ? Colors.grey.shade500
                             : Colors.black87),
                   ),
                 ),
               ),
+
               _label('Detail Barang'),
               TextField(
                 controller: _detailC,
                 maxLines: 7,
-                style: GoogleFonts.inter(fontSize: 13),
+                style: GoogleFonts.sourceSans3(fontSize: 14),
                 decoration: _dekor('Warna, Merek, Fitur Unik...'),
               ),
+
               const SizedBox(height: 26),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.maybePop(context),
+                      onPressed:
+                          _mengirim ? null : () => Navigator.maybePop(context),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: _ink,
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: _navy),
-                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(22)),
                       ),
-                      child: Text('BATAL',
-                          style: GoogleFonts.poppins(
-                              fontSize: 14, fontWeight: FontWeight.w700)),
+                      child: Text('Batal',
+                          style: GoogleFonts.sourceSans3(
+                              fontSize: 16, fontWeight: FontWeight.w800)),
                     ),
                   ),
                   const SizedBox(width: 18),
                   Expanded(
                     flex: 2,
                     child: ElevatedButton.icon(
-                      onPressed: _kirim,
-                      icon: const Icon(Icons.send_outlined, size: 18),
-                      label: Text('Kirim Laporan',
-                          style: GoogleFonts.poppins(
-                              fontSize: 14, fontWeight: FontWeight.w600)),
+                      onPressed: _mengirim ? null : _kirim,
+                      icon: _mengirim
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.send_outlined, size: 18),
+                      label: Text(_mengirim ? 'Mengirim...' : 'Kirim Laporan',
+                          style: GoogleFonts.sourceSans3(
+                              fontSize: 16, fontWeight: FontWeight.w800)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _navy,
                         foregroundColor: Colors.white,
+                        disabledBackgroundColor: _navy.withOpacity(0.7),
+                        disabledForegroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(22)),
                       ),

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/item_barang.dart';
+import 'auth_service.dart';
 
 /// Koleksi Firestore: barang/{id}
 ///  nama, kategori ("Hilang"/"Temuan"), tipe, lokasi, detail,
@@ -37,7 +38,7 @@ class BarangService {
       'fotoBase64': base64Encode(foto),
       'status': 'menunggu',
       'pemilikUid': user.uid,
-      'pemilikNama': user.displayName ?? user.email ?? 'Pengguna',
+      'pemilikNama': await AuthService().namaPengguna(),
     });
   }
 
@@ -63,16 +64,23 @@ class BarangService {
         .map((snap) => snap.docs.map(_dariDoc).toList());
   }
 
-  ItemBarang _dariDoc(QueryDocumentSnapshot<Map<String, dynamic>> d) {
-    final m = d.data();
+  /// Ambil satu barang berdasarkan id (dipakai halaman Chat untuk form klaim).
+  Future<ItemBarang?> ambil(String id) async {
+    final d = await _col.doc(id).get();
+    if (!d.exists) return null;
+    return _dariDoc(d);
+  }
+
+  ItemBarang _dariDoc(DocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data() ?? <String, dynamic>{};
     final waktu = (m['waktu'] as Timestamp?)?.toDate() ?? DateTime.now();
     return ItemBarang(
       id: d.id,
       pemilikUid: m['pemilikUid'] ?? '',
+      jenis: m['kategori'] ?? '',
       nama: m['nama'] ?? '-',
       waktu: _lalu(waktu),
-      kategori: m['kategori'] ?? '-',
-      tipe: m['tipe'] ?? '-',
+      kategori: m['tipe'] ?? '-',
       lokasi: m['lokasi'] ?? '-',
       deskripsi: m['detail'] ?? '',
       gambar: m['fotoBase64'] ?? '',

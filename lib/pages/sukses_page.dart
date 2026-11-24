@@ -59,12 +59,12 @@ class _SuksesPageState extends State<SuksesPage> {
                   ),
                   const SizedBox(height: 14),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Text(widget.pesan,
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
+                        style: GoogleFonts.sourceSans3(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
                             color: const Color(0xFF0F2A47))),
                   ),
                 ],

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -7,6 +8,14 @@ import '../pages/lapor_barang_page.dart';
 /// Dialog "Upload Barang Hilang" (pilih kamera / galeri),
 /// lalu membuka form laporan dengan foto yang dipilih.
 Future<void> showUploadDialog(BuildContext context) async {
+  // hanya pengguna yang sudah login yang boleh melapor
+  if (FirebaseAuth.instance.currentUser == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Silakan login terlebih dahulu')),
+    );
+    return;
+  }
+
   final ImageSource? source = await showGeneralDialog<ImageSource>(
     context: context,
     barrierDismissible: true,
@@ -19,7 +28,9 @@ Future<void> showUploadDialog(BuildContext context) async {
   );
   if (source == null || !context.mounted) return;
 
-  final x = await ImagePicker().pickImage(source: source, imageQuality: 80);
+  // foto diperkecil agar muat di dokumen Firestore (maks. 1 MB)
+  final x = await ImagePicker()
+      .pickImage(source: source, imageQuality: 70, maxWidth: 900);
   if (x == null || !context.mounted) return;
   final bytes = await x.readAsBytes();
   if (!context.mounted) return;
@@ -65,8 +76,8 @@ class _UploadDialog extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text('Upload Barang Hilang',
-                            style: GoogleFonts.poppins(
-                                fontSize: 15,
+                            style: GoogleFonts.sourceSans3(
+                                fontSize: 17,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white)),
                       ),
@@ -93,8 +104,8 @@ class _UploadDialog extends StatelessWidget {
                   ),
                   const SizedBox(height: 22),
                   Text('Pilih Salah Satu',
-                      style: GoogleFonts.poppins(
-                          fontSize: 12, color: Colors.white)),
+                      style: GoogleFonts.sourceSans3(
+                          fontSize: 14, color: Colors.white)),
                 ],
               ),
             ),

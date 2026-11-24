@@ -1,25 +1,27 @@
 class ItemBarang {
-  final String id;         // dokumen Firestore
-  final String pemilikUid; // uid pemilik/poster
   final String nama;
   final String waktu;
-  final String kategori;   // "Hilang" / "Temuan"
-  final String tipe;       // sub-kategori: Dompet, Ponsel, dst.
+  final String kategori; // tipe barang: Kunci, Kartu, Dompet, ...
   final String lokasi;
   final String deskripsi;
-  final String gambar;     // base64 atau kosong
+  final String gambar; // path asset ATAU teks base64 dari Firestore
   final String pemosting;
 
+  // terisi saat data berasal dari Firestore
+  final String id;
+  final String pemilikUid;
+  final String jenis; // "Hilang" / "Temuan"
+
   const ItemBarang({
-    this.id = '',
-    this.pemilikUid = '',
     required this.nama,
     required this.waktu,
     required this.kategori,
-    this.tipe = '',
     required this.lokasi,
     required this.deskripsi,
     required this.gambar,
     this.pemosting = 'Admin',
+    this.id = '',
+    this.pemilikUid = '',
+    this.jenis = '',
   });
 }

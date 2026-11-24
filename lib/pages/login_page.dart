@@ -1,9 +1,10 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'home_page.dart';
-import 'dashboard_admin.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
 import '../widgets/wave_background.dart';
+import 'dashboard_admin.dart';
+import 'home_page.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -14,14 +15,12 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   static const _navy = Color(0xFF0B4F7C);
-  static const _bg = Color(0xFFEFF6FD);
+  static const _ink = Color(0xFF0F2A47);
   static const _fieldBg = Color(0xFFDCE9F8);
+  static const _fieldBorder = Color(0xFF8FA6E3);
 
   final _emailC = TextEditingController();
   final _passC = TextEditingController();
-  // null = belum memilih. Pilihan: Mahasiswa, Staff Kampus, Dosen, Admin
-  String? _jenisUser;
-  static const _jenisList = ['Mahasiswa', 'Staff Kampus', 'Dosen', 'Admin'];
   bool _obscure = true;
   bool _isLoading = false;
   String? _errorMessage;
@@ -34,10 +33,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login() async {
-    if (_jenisUser == null) {
-      setState(() => _errorMessage = 'Silahkan pilih jenis user terlebih dahulu');
-      return;
-    }
     if (_emailC.text.trim().isEmpty || _passC.text.trim().isEmpty) {
       setState(() => _errorMessage = 'Email dan password tidak boleh kosong');
       return;
@@ -51,25 +46,26 @@ class _LoginScreenState extends State<LoginScreen> {
         email: _emailC.text.trim(),
         password: _passC.text.trim(),
       );
+
+      // Peran dibaca otomatis dari database (users/{uid}.role),
+      // bukan dipilih manual -> menghindari salah pilih.
+      final peran = await AuthService().peran();
       if (!mounted) return;
-      // Admin -> Dashboard Admin; Mahasiswa / Staff Kampus / Dosen -> Beranda
-      if (_jenisUser == 'Admin') {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const DashboardAdminPage()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomeScreen()),
-        );
-      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => peran == 'admin'
+              ? const DashboardAdminPage() // admin
+              : const HomeScreen(), // mahasiswa / staff / dosen
+        ),
+      );
     } on FirebaseAuthException catch (e) {
-      debugPrint('FirebaseAuthException: ' + e.code + ' - ' + (e.message ?? ''));
+      debugPrint('FirebaseAuthException: ${e.code} - ${e.message ?? ''}');
       String msg;
       switch (e.code) {
         case 'user-not-found':
-          msg = 'Akun tidak ditemukan di Firebase';
+          msg = 'Akun tidak ditemukan';
           break;
         case 'wrong-password':
           msg = 'Password salah';
@@ -83,16 +79,21 @@ class _LoginScreenState extends State<LoginScreen> {
         case 'user-disabled':
           msg = 'Akun telah dinonaktifkan';
           break;
+        case 'too-many-requests':
+          msg = 'Terlalu banyak percobaan, coba lagi nanti';
+          break;
         case 'network-request-failed':
           msg = 'Koneksi internet bermasalah';
           break;
         default:
-          msg = 'Login gagal: ' + (e.message ?? e.code);
+          msg = 'Login gagal: ${e.message ?? e.code}';
       }
       setState(() => _errorMessage = msg);
     } catch (e) {
-      debugPrint('Login general error: ' + e.toString());
-      setState(() => _errorMessage = 'Gagal login: ' + e.toString());
+      // mis. gagal membaca peran dari database -> batalkan login
+      debugPrint('Login general error: $e');
+      await FirebaseAuth.instance.signOut();
+      setState(() => _errorMessage = 'Gagal login: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -101,7 +102,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: const Color(0xFFEFF6FD),
       body: Stack(
         children: [
           // latar gelombang biru muda
@@ -114,44 +115,46 @@ class _LoginScreenState extends State<LoginScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 36),
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 36),
+                padding: const EdgeInsets.fromLTRB(24, 36, 24, 64),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFFFAFCFF),
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: _navy.withOpacity(0.25),
+                      color: _navy.withOpacity(0.3),
                       blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      offset: const Offset(0, 5),
                     ),
                   ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Image.asset('assets/images/logo.png', height: 100),
+                    Image.asset('assets/images/logo.png',
+                        height: 100,
+                        errorBuilder: (_, __, ___) =>
+                            const SizedBox(height: 100)),
                     const SizedBox(height: 16),
                     Text(
                       'Polibatam Lost & Found',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: const Color(0xFF0F2A47),
+                      style: GoogleFonts.sourceSans3(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: _ink,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       'Barang Hilang? Polibatam Lost & Found Solusinya',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.poppins(fontSize: 11, color: _navy),
+                      style: GoogleFonts.sourceSans3(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                        color: _navy,
+                      ),
                     ),
-                    const SizedBox(height: 28),
-
-                    // pilih jenis user
-                    _dropdownUser(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 34),
 
                     _field(
                       controller: _emailC,
@@ -159,7 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       icon: Icons.person_outline,
                       keyboardType: TextInputType.emailAddress,
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     _field(
                       controller: _passC,
                       hint: 'Masukkan Password',
@@ -170,17 +173,20 @@ class _LoginScreenState extends State<LoginScreen> {
                           _obscure
                               ? Icons.visibility_off_outlined
                               : Icons.visibility_outlined,
-                          color: const Color(0xFF0F2A47),
+                          color: _ink,
                         ),
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
+                      onSubmit: _login,
                     ),
                     const SizedBox(height: 14),
 
-                    // Tampilkan pesan error jika ada
+                    // pesan error
                     if (_errorMessage != null) ...[
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.red.shade50,
                           borderRadius: BorderRadius.circular(8),
@@ -189,10 +195,10 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Text(
                           _errorMessage!,
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
+                          style: GoogleFonts.sourceSans3(
+                            fontSize: 12.5,
                             color: Colors.red.shade700,
-                            fontWeight: FontWeight.w500,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
@@ -224,9 +230,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               )
                             : Text(
                                 'Login',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
+                                style: GoogleFonts.sourceSans3(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w800,
                                 ),
                               ),
                       ),
@@ -241,45 +247,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _dropdownUser() {
-    const ink = Color(0xFF0F2A47);
-    final gaya = GoogleFonts.poppins(
-        fontSize: 11, fontWeight: FontWeight.w600, color: ink);
-    return Center(
-      child: Container(
-        width: 190,
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF7FAFE),
-          border: Border.all(color: _navy),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<String>(
-            value: _jenisUser,
-            isExpanded: true,
-            icon: const Icon(Icons.keyboard_arrow_down, size: 20, color: ink),
-            dropdownColor: const Color(0xFFF7FAFE),
-            borderRadius: BorderRadius.circular(6),
-            style: gaya,
-            hint: Text('Silahkan Pilih User', style: gaya),
-            items: [
-              DropdownMenuItem<String>(
-                  value: null, child: Text('Pilih Jenis User', style: gaya)),
-              ..._jenisList.map((e) => DropdownMenuItem<String>(
-                  value: e, child: Text(e, style: gaya))),
-            ],
-            onChanged: (v) => setState(() {
-              _jenisUser = v;
-              _errorMessage = null;
-            }),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _field({
     required TextEditingController controller,
     required String hint,
@@ -287,32 +254,34 @@ class _LoginScreenState extends State<LoginScreen> {
     bool obscure = false,
     Widget? suffix,
     TextInputType? keyboardType,
+    VoidCallback? onSubmit,
   }) {
     return TextField(
       controller: controller,
       obscureText: obscure,
       keyboardType: keyboardType,
-      style: GoogleFonts.poppins(fontSize: 13),
+      onSubmitted: onSubmit == null ? null : (_) => onSubmit(),
+      style: GoogleFonts.sourceSans3(fontSize: 14, color: _ink),
       decoration: InputDecoration(
         filled: true,
         fillColor: _fieldBg,
         isDense: true,
         hintText: hint,
-        hintStyle: GoogleFonts.poppins(
-          fontSize: 13,
-          fontWeight: FontWeight.w500,
-          color: const Color(0xB3102A43),
+        hintStyle: GoogleFonts.sourceSans3(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: const Color(0xB3102A43), // 70% terlihat
         ),
-        prefixIcon: Icon(icon, color: const Color(0xFF0F2A47)),
+        prefixIcon: Icon(icon, color: _ink),
         suffixIcon: suffix,
         contentPadding: const EdgeInsets.symmetric(vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: _navy),
+          borderSide: const BorderSide(color: _fieldBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),
-          borderSide: const BorderSide(color: _navy),
+          borderSide: const BorderSide(color: _fieldBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(6),

@@ -24,6 +24,15 @@ class AuthService {
 
   Future<void> logout() => _auth.signOut();
 
+  /// Peran akun dari users/{uid}.role  (mis. "admin", "mahasiswa", "dosen", "staff").
+  /// Jika dokumen/field belum ada, dianggap civitas akademik biasa.
+  Future<String> peran() async {
+    final u = _auth.currentUser;
+    if (u == null) return 'tamu';
+    final doc = await _db.collection('users').doc(u.uid).get();
+    return (doc.data()?['role'] ?? 'mahasiswa').toString().toLowerCase().trim();
+  }
+
   /// Data profil dari koleksi users (nama, nim, email, jurusan, prodi, status).
   Future<Map<String, dynamic>?> profilSaatIni() async {
     final u = _auth.currentUser;
