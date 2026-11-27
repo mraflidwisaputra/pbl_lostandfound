@@ -64,6 +64,27 @@ class BarangService {
         .map((snap) => snap.docs.map(_dariDoc).toList());
   }
 
+  /// Laporan milik saya (untuk halaman Riwayat Laporan).
+  Stream<List<LaporanSaya>> streamSaya() {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    return _col.where('pemilikUid', isEqualTo: uid).snapshots().map((snap) {
+      final now = DateTime.now();
+      final docs = snap.docs.toList()
+        ..sort((a, b) {
+          final ta = (a.data()['dibuat'] as Timestamp?)?.toDate() ?? now;
+          final tb = (b.data()['dibuat'] as Timestamp?)?.toDate() ?? now;
+          return tb.compareTo(ta); // terbaru di atas
+        });
+      return docs
+          .map((d) => LaporanSaya(
+                item: _dariDoc(d),
+                status: (d.data()['status'] ?? 'menunggu').toString(),
+                tanggal: (d.data()['waktu'] as Timestamp?)?.toDate(),
+              ))
+          .toList();
+    });
+  }
+
   /// Ambil satu barang berdasarkan id (dipakai halaman Chat untuk form klaim).
   Future<ItemBarang?> ambil(String id) async {
     final d = await _col.doc(id).get();
@@ -78,6 +99,7 @@ class BarangService {
       id: d.id,
       pemilikUid: m['pemilikUid'] ?? '',
       jenis: m['kategori'] ?? '',
+      tanggal: waktu,
       nama: m['nama'] ?? '-',
       waktu: _lalu(waktu),
       kategori: m['tipe'] ?? '-',
@@ -95,4 +117,14 @@ class BarangService {
     if (d.inHours < 24) return '${d.inHours} Jam Yang Lalu';
     return '${d.inDays} Hari Yang Lalu';
   }
+}
+
+/// Satu laporan milik pengguna beserta statusnya
+/// ("menunggu" / "selesai") untuk halaman Riwayat.
+class LaporanSaya {
+  final ItemBarang item;
+  final String status;
+  final DateTime? tanggal;
+  const LaporanSaya(
+      {required this.item, required this.status, required this.tanggal});
 }

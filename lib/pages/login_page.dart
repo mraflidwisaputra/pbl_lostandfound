@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../widgets/wave_background.dart';
-import 'dashboard_admin.dart';
 import 'home_page.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -47,18 +46,22 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passC.text.trim(),
       );
 
-      // Peran dibaca otomatis dari database (users/{uid}.role),
-      // bukan dipilih manual -> menghindari salah pilih.
+      // Peran dibaca dari database (users/{uid}.role).
+      // Aplikasi mobile ini khusus civitas akademik (mahasiswa, dosen, staff).
+      // Admin memakai panel web (Laravel), jadi ditolak di sini.
       final peran = await AuthService().peran();
+      if (peran == 'admin') {
+        await FirebaseAuth.instance.signOut();
+        if (!mounted) return;
+        setState(() => _errorMessage =
+            'Akun admin tidak dapat masuk lewat aplikasi ini. Silakan gunakan panel web admin.');
+        return;
+      }
       if (!mounted) return;
 
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => peran == 'admin'
-              ? const DashboardAdminPage() // admin
-              : const HomeScreen(), // mahasiswa / staff / dosen
-        ),
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
       );
     } on FirebaseAuthException catch (e) {
       debugPrint('FirebaseAuthException: ${e.code} - ${e.message ?? ''}');

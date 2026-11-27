@@ -11,6 +11,7 @@ class ItemBarang {
   final String id;
   final String pemilikUid;
   final String jenis; // "Hilang" / "Temuan"
+  final DateTime? tanggal; // waktu kehilangan / penemuan
 
   const ItemBarang({
     required this.nama,
@@ -23,5 +24,9 @@ class ItemBarang {
     this.id = '',
     this.pemilikUid = '',
     this.jenis = '',
+    this.tanggal,
   });
+
+  /// Alias: sebagian halaman memakai nama `tipe` (isinya sama dengan `kategori`).
+  String get tipe => kategori;
 }

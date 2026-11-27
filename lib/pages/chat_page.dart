@@ -95,16 +95,10 @@ class _ChatPageState extends State<ChatPage> {
 
   void _ajukanKlaim() {
     final b = _barang;
+    if (b == null) return;
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => AjukanKlaimPage(
-          namaBarang: widget.namaBarang,
-          lokasiDitemukan: b?.lokasi ?? '-',
-          tanggalDitemukan: b?.waktu ?? '-',
-          gambar: b?.gambar ?? '',
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => AjukanKlaimPage(barang: b)),
     );
   }
 

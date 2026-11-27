@@ -2,21 +2,14 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import '../models/item_barang.dart';
+import '../services/klaim_service.dart';
+import '../widgets/foto_barang.dart';
 import 'klaim_status_page.dart';
 
 class AjukanKlaimPage extends StatefulWidget {
-  final String namaBarang;
-  final String lokasiDitemukan;
-  final String tanggalDitemukan;
-  final String gambar;
-
-  const AjukanKlaimPage({
-    super.key,
-    required this.namaBarang,
-    this.lokasiDitemukan = '-',
-    this.tanggalDitemukan = '-',
-    this.gambar = '',
-  });
+  final ItemBarang barang;
+  const AjukanKlaimPage({super.key, required this.barang});
 
   @override
   State<AjukanKlaimPage> createState() => _AjukanKlaimPageState();
@@ -37,7 +30,8 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
   final List<Uint8List?> _bukti = [null, null, null];
   DateTime _tanggal = DateTime.now();
 
-  String _format(DateTime d) => '${d.day} ${_bulan[d.month - 1]} ${d.year}';
+  String _format(DateTime? d) =>
+      d == null ? '-' : '${d.day} ${_bulan[d.month - 1]} ${d.year}';
 
   @override
   void dispose() {
@@ -47,8 +41,9 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
   }
 
   Future<void> _pilihFoto(int index) async {
+    // foto bukti diperkecil agar muat di dokumen Firestore
     final x = await _picker.pickImage(
-        source: ImageSource.gallery, imageQuality: 80);
+        source: ImageSource.gallery, imageQuality: 60, maxWidth: 800);
     if (x == null) return;
     final bytes = await x.readAsBytes();
     if (!mounted) return;
@@ -66,19 +61,31 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
   }
 
   void _kirim() {
-    if (_ciriC.text.trim().isEmpty || _lokasiC.text.trim().isEmpty) {
+    final ciri = _ciriC.text.trim();
+    final lokasi = _lokasiC.text.trim();
+    if (ciri.isEmpty || lokasi.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
             content: Text('Isi ciri-ciri barang dan lokasi kehilangan')),
       );
       return;
     }
+    final bukti = _bukti.whereType<Uint8List>().toList();
+    final kapan = _tanggal;
+    final barang = widget.barang;
+
+    // layar loading -> berhasil; penyimpanan ke Firestore dijalankan di sana
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => KlaimStatusPage(
-          // TODO: ganti dengan proses kirim data klaim ke server/database
-          proses: Future.delayed(const Duration(seconds: 2)),
+          proses: () => KlaimService().ajukan(
+            barang: barang,
+            ciri: ciri,
+            kapan: kapan,
+            lokasi: lokasi,
+            bukti: bukti,
+          ),
         ),
       ),
     );
@@ -101,9 +108,9 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
                   ),
                   const SizedBox(width: 4),
                   Text('Ajukan Klaim',
-                      style: GoogleFonts.poppins(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
+                      style: GoogleFonts.sourceSans3(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
                           color: _ink)),
                 ],
               ),
@@ -131,14 +138,14 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
                               backgroundColor: Colors.white,
                               side: const BorderSide(color: _ink),
                               padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
+                                  const EdgeInsets.symmetric(vertical: 11),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(6)),
                             ),
-                            child: Text('BATAL',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700)),
+                            child: Text('Batal',
+                                style: GoogleFonts.sourceSans3(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800)),
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -147,15 +154,15 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
                             onPressed: _kirim,
                             icon: const Icon(Icons.send_outlined, size: 18),
                             label: Text('Ajukan Klaim',
-                                style: GoogleFonts.poppins(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600)),
+                                style: GoogleFonts.sourceSans3(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _navy,
                               foregroundColor: Colors.white,
                               elevation: 0,
                               padding:
-                                  const EdgeInsets.symmetric(vertical: 12),
+                                  const EdgeInsets.symmetric(vertical: 11),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(6)),
                             ),
@@ -186,6 +193,7 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
       );
 
   Widget _kartuBarang() {
+    final b = widget.barang;
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: _kartu,
@@ -193,29 +201,27 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
-            child: widget.gambar.isEmpty
-                ? _placeholder(60)
-                : Image.asset(widget.gambar,
-                    width: 60,
-                    height: 60,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _placeholder(60)),
+            child: FotoBarang(b.gambar,
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) =>
+                    Container(width: 60, height: 60, color: Colors.grey.shade300)),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.namaBarang,
+                Text(b.nama,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.poppins(
-                        fontSize: 13, fontWeight: FontWeight.w700, color: _ink)),
+                    style: GoogleFonts.sourceSans3(
+                        fontSize: 15, fontWeight: FontWeight.w800, color: _ink)),
                 const SizedBox(height: 6),
-                _meta(Icons.location_on_outlined,
-                    'Ditemukan Di ${widget.lokasiDitemukan}'),
+                _meta(Icons.location_on_outlined, 'Ditemukan Di ${b.lokasi}'),
                 const SizedBox(height: 4),
-                _meta(Icons.event_available_outlined, widget.tanggalDitemukan),
+                _meta(Icons.event_available_outlined, _format(b.tanggal)),
               ],
             ),
           ),
@@ -223,12 +229,6 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
       ),
     );
   }
-
-  Widget _placeholder(double s) => Container(
-      width: s,
-      height: s,
-      color: Colors.grey.shade300,
-      child: const Icon(Icons.image_outlined));
 
   Widget _meta(IconData icon, String t) => Row(
         children: [
@@ -238,13 +238,13 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
               child: Text(t,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(fontSize: 10))),
+                  style: GoogleFonts.sourceSans3(fontSize: 10, color: _navy))),
         ],
       );
 
   Widget _judul(String t) => Text(t,
-      style: GoogleFonts.poppins(
-          fontSize: 13, fontWeight: FontWeight.w700, color: _ink));
+      style: GoogleFonts.sourceSans3(
+          fontSize: 14, fontWeight: FontWeight.w800, color: _ink));
 
   Widget _kartuInfo() {
     return Container(
@@ -256,24 +256,25 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
           _judul('Informasi Klaim'),
           const SizedBox(height: 6),
           Text('Jelaskan ciri-ciri khusus yang hanya diketahui anda.',
-              style: GoogleFonts.inter(fontSize: 11, color: _ink)),
+              style: GoogleFonts.sourceSans3(fontSize: 12, color: _ink)),
           const SizedBox(height: 10),
           TextField(
             controller: _ciriC,
             maxLines: 5,
-            style: GoogleFonts.inter(fontSize: 12),
+            style: GoogleFonts.sourceSans3(fontSize: 13),
             decoration: InputDecoration(
               contentPadding: const EdgeInsets.all(12),
+              labelText: null,
+              hintText:
+                  'Contoh: ada goresan kecil di samping, warna dial hijau , dan ada stiker kecil di belakang...',
+              hintStyle: GoogleFonts.sourceSans3(
+                  fontSize: 12, color: Colors.grey.shade500),
               prefixIcon: const Padding(
                 padding: EdgeInsets.only(left: 8, right: 4, bottom: 70),
                 child: Icon(Icons.edit_note, size: 18, color: _navy),
               ),
               prefixIconConstraints:
                   const BoxConstraints(minWidth: 0, minHeight: 0),
-              hintText:
-                  'Contoh: ada goresan kecil di samping, warna dial hijau, dan ada stiker kecil di belakang...',
-              hintStyle: GoogleFonts.inter(
-                  fontSize: 11, color: Colors.grey.shade500),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
                 borderSide: BorderSide(color: Colors.grey.shade300),
@@ -299,7 +300,7 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
           _judul('Bukti Kepemilikan'),
           const SizedBox(height: 4),
           Text('Upload foto, identitas, atau bukti kepemilikan (opsional)',
-              style: GoogleFonts.inter(fontSize: 10, color: _ink)),
+              style: GoogleFonts.sourceSans3(fontSize: 11, color: _ink)),
           const SizedBox(height: 14),
           Row(
             children: List.generate(3, (i) {
@@ -379,20 +380,23 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 10),
-                        decoration: _kotakInput,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
                         child: Text(_format(_tanggal),
-                            style: GoogleFonts.inter(fontSize: 12)),
+                            style: GoogleFonts.sourceSans3(fontSize: 13)),
                       ),
                     ),
                     const SizedBox(height: 8),
                     TextField(
                       controller: _lokasiC,
-                      style: GoogleFonts.inter(fontSize: 12),
+                      style: GoogleFonts.sourceSans3(fontSize: 13),
                       decoration: InputDecoration(
                         isDense: true,
                         hintText: 'Lokasi kehilangan',
-                        hintStyle: GoogleFonts.inter(
-                            fontSize: 12, color: Colors.grey.shade500),
+                        hintStyle: GoogleFonts.sourceSans3(
+                            fontSize: 13, color: Colors.grey.shade500),
                         contentPadding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 10),
                         enabledBorder: OutlineInputBorder(
@@ -414,11 +418,6 @@ class _AjukanKlaimPageState extends State<AjukanKlaimPage> {
       ),
     );
   }
-
-  BoxDecoration get _kotakInput => BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey.shade300),
-      );
 }
 
 class _DashedRRectPainter extends CustomPainter {

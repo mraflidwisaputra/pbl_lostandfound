@@ -4,10 +4,10 @@ import '../widgets/wave_background.dart';
 import 'home_page.dart';
 import 'riwayat_laporan_page.dart';
 
-/// Menampilkan "Mengajukan Klaim..." lalu berubah menjadi "Berhasil".
-/// [proses] = pekerjaan yang ditunggu (mis. request ke server).
+/// Menjalankan [proses] (simpan klaim ke Firestore) sambil menampilkan
+/// "Mengajukan Klaim...", lalu berubah menjadi "Klaim Berhasil Diajukan".
 class KlaimStatusPage extends StatefulWidget {
-  final Future<void> proses;
+  final Future<void> Function() proses;
   const KlaimStatusPage({super.key, required this.proses});
 
   @override
@@ -21,21 +21,29 @@ class _KlaimStatusPageState extends State<KlaimStatusPage> {
 
   bool _selesai = false;
   bool _gagal = false;
+  String _pesanGagal = '';
 
   @override
   void initState() {
     super.initState();
-    widget.proses.then((_) {
+    widget.proses().then((_) {
       if (mounted) setState(() => _selesai = true);
-    }).catchError((_) {
-      if (mounted) setState(() => _gagal = true);
+    }).catchError((Object e) {
+      if (!mounted) return;
+      final t = e.toString();
+      setState(() {
+        _gagal = true;
+        _pesanGagal = t.startsWith('Exception: ')
+            ? t.replaceFirst('Exception: ', '')
+            : 'Periksa koneksi internet Anda lalu coba lagi.';
+      });
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // cegah kembali saat proses / setelah selesai
+      canPop: _gagal, // tidak bisa kembali saat proses / setelah berhasil
       child: Scaffold(
         body: WaveBackground(
           child: SafeArea(
@@ -85,12 +93,12 @@ class _KlaimStatusPageState extends State<KlaimStatusPage> {
           ),
           const SizedBox(height: 18),
           Text('Mengajukan Klaim...',
-              style: GoogleFonts.poppins(
-                  fontSize: 18, fontWeight: FontWeight.w700, color: _ink)),
+              style: GoogleFonts.sourceSans3(
+                  fontSize: 20, fontWeight: FontWeight.w800, color: _ink)),
           const SizedBox(height: 10),
           Text('Mohon Tunggu Sebentar,\nKami Sedang Menyimpan Data Klaim Anda',
               textAlign: TextAlign.center,
-              style: GoogleFonts.inter(fontSize: 12, color: _ink)),
+              style: GoogleFonts.sourceSans3(fontSize: 14, color: _ink)),
         ],
       ),
     );
@@ -118,14 +126,14 @@ class _KlaimStatusPageState extends State<KlaimStatusPage> {
             const SizedBox(height: 16),
             Text('KLAIM BERHASIL DIAJUKAN',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                    fontSize: 19, fontWeight: FontWeight.w700, color: _ink)),
+                style: GoogleFonts.sourceSans3(
+                    fontSize: 22, fontWeight: FontWeight.w800, color: _ink)),
             const SizedBox(height: 18),
             Text(
                 'Klaim Anda Berhasil Dikirim\nDan Sedang Menunggu Verifikasi\nOleh Admin.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                    fontSize: 14, height: 1.5, color: _ink)),
+                style: GoogleFonts.sourceSans3(
+                    fontSize: 16, height: 1.45, color: _ink)),
             const SizedBox(height: 36),
             SizedBox(
               width: double.infinity,
@@ -134,7 +142,8 @@ class _KlaimStatusPageState extends State<KlaimStatusPage> {
                 onPressed: () => Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => const RiwayatLaporanPage()),
+                      builder: (_) =>
+                          const RiwayatLaporanPage(tabKlaim: true)),
                   (route) => false,
                 ),
                 style: ElevatedButton.styleFrom(
@@ -144,9 +153,9 @@ class _KlaimStatusPageState extends State<KlaimStatusPage> {
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(6)),
                 ),
-                child: Text('Lihat Riwayat Laporan',
-                    style: GoogleFonts.poppins(
-                        fontSize: 13, fontWeight: FontWeight.w600)),
+                child: Text('Lihat Riwayat Klaim',
+                    style: GoogleFonts.sourceSans3(
+                        fontSize: 15, fontWeight: FontWeight.w700)),
               ),
             ),
             const SizedBox(height: 8),
@@ -161,8 +170,8 @@ class _KlaimStatusPageState extends State<KlaimStatusPage> {
                 ),
                 icon: const Icon(Icons.reply, size: 16),
                 label: Text('Kembali Ke Beranda',
-                    style: GoogleFonts.poppins(
-                        fontSize: 13, fontWeight: FontWeight.w600)),
+                    style: GoogleFonts.sourceSans3(
+                        fontSize: 15, fontWeight: FontWeight.w700)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _ink,
                   backgroundColor: Colors.white,
@@ -189,18 +198,19 @@ class _KlaimStatusPageState extends State<KlaimStatusPage> {
             const Icon(Icons.error_outline, size: 72, color: Colors.redAccent),
             const SizedBox(height: 14),
             Text('Klaim gagal dikirim',
-                style: GoogleFonts.poppins(
-                    fontSize: 18, fontWeight: FontWeight.w700, color: _ink)),
+                style: GoogleFonts.sourceSans3(
+                    fontSize: 20, fontWeight: FontWeight.w800, color: _ink)),
             const SizedBox(height: 8),
-            Text('Periksa koneksi internet Anda lalu coba lagi.',
+            Text(_pesanGagal,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(fontSize: 13, color: _ink)),
+                style: GoogleFonts.sourceSans3(fontSize: 14, color: _ink)),
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
                   backgroundColor: _navy, foregroundColor: Colors.white),
-              child: const Text('Kembali ke formulir'),
+              child: Text('Kembali',
+                  style: GoogleFonts.sourceSans3(fontWeight: FontWeight.w700)),
             ),
           ],
         ),
